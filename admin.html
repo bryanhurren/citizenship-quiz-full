@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - US Citizenship Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #667eea;
+            margin: 30px 0 15px 0;
+            font-size: 20px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn.secondary {
+            background: #999;
+        }
+
+        .btn.danger {
+            background: #f44336;
+        }
+
+        .code-list,
+        .user-list {
+            margin: 20px 0;
+        }
+
+        .code-item,
+        .user-item {
+            background: #f5f5f5;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-item.used {
+            background: #e0e0e0;
+            opacity: 0.6;
+        }
+
+        .code {
+            font-family: monospace;
+            font-weight: 700;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status.available {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status.used {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .admin-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .logout-btn {
+            float: right;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div class="screen active" id="loginScreen">
+            <h1>Admin Login</h1>
+            <div class="form-group">
+                <label for="adminPassword">Password:</label>
+                <input type="password" id="adminPassword" placeholder="Enter admin password">
+            </div>
+            <button class="btn" onclick="adminLogin()">Login</button>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div class="screen" id="dashboardScreen">
+            <h1>Admin Dashboard
+                <button class="btn secondary logout-btn" onclick="logout()">Logout</button>
+            </h1>
+
+            <h2>Generate Invite Codes</h2>
+            <div class="form-group">
+                <label for="codeCount">Number of codes to generate:</label>
+                <input type="text" id="codeCount" value="1" style="max-width: 100px;">
+                <button class="btn" onclick="generateCodes()" style="margin-left: 10px;">Generate</button>
+            </div>
+
+            <h2>Invite Codes</h2>
+            <div id="codeList" class="code-list"></div>
+
+            <h2>Manage Admins</h2>
+            <div class="form-group">
+                <label for="newAdminUsername">Username:</label>
+                <input type="text" id="newAdminUsername" placeholder="Enter username">
+            </div>
+            <div class="form-group">
+                <label for="newAdminPassword">Password:</label>
+                <input type="password" id="newAdminPassword" placeholder="Enter password">
+            </div>
+            <button class="btn" onclick="createAdmin()">Create Admin</button>
+
+            <h2>All Admins</h2>
+            <div id="adminList"></div>
+
+            <h2>All Users</h2>
+            <div id="userList" class="user-list"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://calexrqhodjgxlojokbb.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGV4cnFob2RqZ3hsb2pva2JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MjMwNDEsImV4cCI6MjA3NjE5OTA0MX0.b7zkaCz7IQ53yeR7LgfMsPq3C6NHZi5Swr-PSMuN-is';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Initialize admin system
+        async function initAdminSystem() {
+            const admins = JSON.parse(localStorage.getItem('quizAdmins') || 'null');
+
+            if (!admins) {
+                // Create master admin
+                const masterAdmin = {
+                    username: 'master',
+                    password: 'PeePeePooPoo2020!',
+                    createdAt: new Date().toISOString()
+                };
+                localStorage.setItem('quizAdmins', JSON.stringify([masterAdmin]));
+
+                // Auto-create user account for master admin
+                const users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+                if (!users.find(u => u.name === 'master')) {
+                    users.push({
+                        name: 'master',
+                        password: 'PeePeePooPoo2020!',
+                        inviteCode: 'ADMIN-AUTO',
+                        currentQuestion: 0,
+                        correctCount: 0,
+                        partialCount: 0,
+                        incorrectCount: 0,
+                        questionResults: [],
+                        completed: false,
+                        apiProvider: '',
+                        apiKey: '',
+                        bestScore: 0,
+                        lastSessionDate: null,
+                        isAdmin: true
+                    });
+                    localStorage.setItem('quizUsers', JSON.stringify(users));
+                }
+            }
+
+            const codes = JSON.parse(localStorage.getItem('quizInviteCodes') || 'null');
+            if (!codes) {
+                localStorage.setItem('quizInviteCodes', JSON.stringify([]));
+            }
+        }
+
+        // Admin login
+        function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            const admins = JSON.parse(localStorage.getItem('quizAdmins') || '[]');
+
+            const validAdmin = admins.find(a => a.password === password);
+
+            if (validAdmin) {
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                sessionStorage.setItem('adminUsername', validAdmin.username);
+                showDashboard();
+            } else {
+                alert('Invalid password');
+            }
+        }
+
+        // Show dashboard
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+            loadCodes();
+            loadAdmins();
+            loadUsers();
+        }
+
+        // Generate invite codes
+        async function generateCodes() {
+            const count = parseInt(document.getElementById('codeCount').value) || 1;
+            const createdBy = sessionStorage.getItem('adminUsername') || 'admin';
+
+            const codesToInsert = [];
+            for (let i = 0; i < count; i++) {
+                const code = generateRandomCode();
+                codesToInsert.push({
+                    code: code,
+                    used: false,
+                    created_by: createdBy
+                });
+            }
+
+            const { data, error } = await supabase
+                .from('invite_codes')
+                .insert(codesToInsert)
+                .select();
+
+            if (error) {
+                console.error('Error generating codes:', error);
+                alert('Error generating codes: ' + error.message);
+                return;
+            }
+
+            alert(`Generated ${count} invite code(s) successfully!`);
+            loadCodes();
+        }
+
+        // Generate random code
+        function generateRandomCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < 12; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+                if ((i + 1) % 4 === 0 && i < 11) code += '-';
+            }
+            return code;
+        }
+
+        // Load codes
+        async function loadCodes() {
+            const { data: codes, error } = await supabase
+                .from('invite_codes')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error loading codes:', error);
+                return;
+            }
+
+            const codeList = document.getElementById('codeList');
+
+            if (!codes || codes.length === 0) {
+                codeList.innerHTML = '<p style="color: #999;">No invite codes generated yet.</p>';
+                return;
+            }
+
+            codeList.innerHTML = codes.map(c => `
+                <div class="code-item ${c.used ? 'used' : ''}">
+                    <div>
+                        <div class="code">${c.code}</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                            Created: ${new Date(c.created_at).toLocaleString()} by ${c.created_by || 'admin'}
+                            ${c.used ? `<br>Used by: ${c.used_by}` : ''}
+                        </div>
+                    </div>
+                    <span class="status ${c.used ? 'used' : 'available'}">
+                        ${c.used ? 'USED' : 'AVAILABLE'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // Create admin
+        function createAdmin() {
+            const username = document.getElementById('newAdminUsername').value.trim();
+            const password = document.getElementById('newAdminPassword').value.trim();
+
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+
+            const admins = JSON.parse(localStorage.getItem('quizAdmins') || '[]');
+
+            if (admins.find(a => a.username === username)) {
+                alert('Admin with this username already exists');
+                return;
+            }
+
+            admins.push({
+                username: username,
+                password: password,
+                createdAt: new Date().toISOString(),
+                createdBy: sessionStorage.getItem('adminUsername')
+            });
+
+            localStorage.setItem('quizAdmins', JSON.stringify(admins));
+
+            // Auto-create quiz user account for admin
+            const users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+            if (!users.find(u => u.name === username)) {
+                users.push({
+                    name: username,
+                    password: password,
+                    inviteCode: 'ADMIN-AUTO',
+                    currentQuestion: 0,
+                    correctCount: 0,
+                    partialCount: 0,
+                    incorrectCount: 0,
+                    questionResults: [],
+                    completed: false,
+                    apiProvider: '',
+                    apiKey: '',
+                    bestScore: 0,
+                    lastSessionDate: null,
+                    isAdmin: true
+                });
+                localStorage.setItem('quizUsers', JSON.stringify(users));
+            }
+
+            document.getElementById('newAdminUsername').value = '';
+            document.getElementById('newAdminPassword').value = '';
+            loadAdmins();
+            loadUsers();
+            alert('Admin created successfully (quiz user account also created)');
+        }
+
+        // Load admins
+        function loadAdmins() {
+            const admins = JSON.parse(localStorage.getItem('quizAdmins') || '[]');
+            const adminList = document.getElementById('adminList');
+
+            adminList.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${admins.map(a => `
+                            <tr>
+                                <td>${a.username} ${a.username === 'master' ? '<span class="admin-badge">MASTER</span>' : ''}</td>
+                                <td style="font-family: monospace;">${a.password}</td>
+                                <td>${new Date(a.createdAt).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Load users
+        function loadUsers() {
+            const users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+            const userList = document.getElementById('userList');
+
+            if (users.length === 0) {
+                userList.innerHTML = '<p style="color: #999;">No users registered yet.</p>';
+                return;
+            }
+
+            userList.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Password</th>
+                            <th>Invite Code</th>
+                            <th>Best Score</th>
+                            <th>Last Session</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map((u, index) => `
+                            <tr>
+                                <td>${u.name} ${u.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}</td>
+                                <td style="font-family: monospace;">${u.password || 'N/A'}</td>
+                                <td style="font-family: monospace;">${u.inviteCode || 'N/A'}</td>
+                                <td>${u.bestScore || 0}/100</td>
+                                <td>${u.lastSessionDate ? new Date(u.lastSessionDate).toLocaleString() : 'Never'}</td>
+                                <td>
+                                    <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="resetPassword('${u.name}')">Reset Password</button>
+                                    <button class="btn danger" style="padding: 6px 12px; font-size: 12px; margin-left: 5px;" onclick="deleteUser('${u.name}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Reset user password
+        function resetPassword(username) {
+            const newPassword = prompt(`Enter new password for ${username}:`);
+            if (newPassword) {
+                const users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+                const user = users.find(u => u.name === username);
+                if (user) {
+                    user.password = newPassword;
+                    localStorage.setItem('quizUsers', JSON.stringify(users));
+
+                    // Also update admin password if user is admin
+                    const admins = JSON.parse(localStorage.getItem('quizAdmins') || '[]');
+                    const admin = admins.find(a => a.username === username);
+                    if (admin) {
+                        admin.password = newPassword;
+                        localStorage.setItem('quizAdmins', JSON.stringify(admins));
+                    }
+
+                    loadUsers();
+                    loadAdmins();
+                    alert('Password updated successfully');
+                }
+            }
+        }
+
+        // Delete user
+        function deleteUser(username) {
+            if (confirm(`Are you sure you want to delete user "${username}"? This cannot be undone.`)) {
+                let users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+                users = users.filter(u => u.name !== username);
+                localStorage.setItem('quizUsers', JSON.stringify(users));
+                loadUsers();
+                alert('User deleted successfully');
+            }
+        }
+
+        // Logout
+        function logout() {
+            sessionStorage.removeItem('adminLoggedIn');
+            sessionStorage.removeItem('adminUsername');
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('loginScreen').classList.add('active');
+            document.getElementById('adminPassword').value = '';
+        }
+
+        // Check if already logged in
+        if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+            showDashboard();
+        }
+
+        // Initialize
+        initAdminSystem();
+    </script>
+</body>
+</html>
