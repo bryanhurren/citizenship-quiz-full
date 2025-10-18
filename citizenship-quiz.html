@@ -13,41 +13,349 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        .top-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
             align-items: center;
+            padding: 0 16px;
+            z-index: 100;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 56px;
+            margin-bottom: 60px;
+            padding: 16px;
+        }
+
+        /* Tab Panels */
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            z-index: 100;
+        }
+
+        .nav-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.2s;
+            padding: 8px;
+        }
+
+        .nav-tab.active {
+            color: #667eea;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Login Modal */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
             padding: 20px;
         }
 
-        .container {
+        .login-modal.show {
+            display: flex;
+        }
+
+        .login-modal-content {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 700px;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
             width: 100%;
-            padding: 40px;
             max-height: 90vh;
             overflow-y: auto;
+        }
+
+        .login-modal h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .login-modal input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .login-modal input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* User Profile Card */
+        .profile-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .profile-username {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.formal {
+            background: #4caf50;
+        }
+
+        .badge.comedy {
+            background: #f44336;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .profile-stat {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .profile-stat strong {
+            display: block;
+            font-size: 16px;
+            color: #333;
+            margin-top: 2px;
+        }
+
+        /* Session Affordances */
+        .session-affordances {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .session-btn {
+            flex: 1;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .session-btn:hover {
+            background: #5568d3;
+        }
+
+        .session-btn.secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .session-btn.secondary:hover {
+            background: #e0e0e0;
+        }
+
+        /* Historical Attempts */
+        .history-section {
+            margin-bottom: 12px;
+        }
+
+        .history-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .history-list {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+        }
+
+        .history-item {
+            display: grid;
+            grid-template-columns: 40px 1fr 1.5fr 1fr auto;
+            gap: 8px;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            align-items: center;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-number {
+            color: #999;
+            font-weight: 500;
+        }
+
+        .history-date {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .history-score {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .history-in-progress {
+            color: #ff9800;
+            font-weight: 500;
+        }
+
+        .resume-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .resume-btn:hover {
+            background: #5568d3;
+        }
+
+        .history-empty {
+            padding: 24px;
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+        }
+
+        /* Compact Stats Row */
+        .stats-row {
+            font-size: 12px;
+            color: #666;
+            margin: 12px 0;
+            text-align: center;
+        }
+
+        .stats-row .correct {
+            color: #4caf50;
+        }
+
+        .stats-row .partial {
+            color: #ff9800;
+        }
+
+        .stats-row .incorrect {
+            color: #f44336;
         }
 
         h1 {
             color: #333;
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 28px;
+            margin-bottom: 8px;
+            font-size: 22px;
         }
 
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
@@ -55,21 +363,13 @@
             color: #667eea;
             cursor: pointer;
             text-decoration: underline;
-            font-size: 13px;
+            font-size: 12px;
             transition: all 0.2s;
         }
 
         .mode-toggle:hover {
             color: #5568d3;
             text-decoration: none;
-        }
-
-        .screen {
-            display: none;
-        }
-
-        .screen.show {
-            display: block;
         }
 
         /* User Selection Screen */
@@ -222,22 +522,22 @@
 
         /* Mode Selection */
         .mode-selection {
-            margin: 30px 0;
+            margin: 16px 0;
         }
 
         .mode-option {
             background: #f5f5f5;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
-            border: 3px solid transparent;
+            border: 2px solid transparent;
         }
 
         .mode-option:hover {
             background: #ececec;
-            transform: translateX(4px);
+            transform: translateX(2px);
         }
 
         .mode-option.selected {
@@ -247,12 +547,14 @@
         }
 
         .mode-option h3 {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            font-size: 16px;
         }
 
         .mode-option p {
-            font-size: 14px;
+            font-size: 13px;
             opacity: 0.9;
+            line-height: 1.4;
         }
 
         .mode-option.selected p {
@@ -262,10 +564,10 @@
         .warning-box {
             background: #fff3cd;
             border: 2px solid #ffc107;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 13px;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 12px;
             color: #856404;
         }
 
@@ -295,39 +597,40 @@
 
         /* Question Section */
         .question-section {
-            margin-bottom: 30px;
+            margin-bottom: 16px;
         }
 
         .question-number {
             color: #667eea;
             font-weight: 600;
-            margin-bottom: 15px;
-            font-size: 14px;
+            margin-bottom: 8px;
+            font-size: 13px;
         }
 
         .question-text {
-            font-size: 20px;
+            font-size: 18px;
             color: #333;
-            margin-bottom: 25px;
-            line-height: 1.5;
+            margin-bottom: 16px;
+            line-height: 1.4;
+            font-weight: 500;
         }
 
         .answer-input {
             width: 100%;
-            padding: 16px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 6px;
+            font-size: 14px;
             font-family: inherit;
             transition: all 0.2s ease;
             resize: vertical;
-            min-height: 100px;
+            min-height: 80px;
         }
 
         .answer-input:focus {
             outline: none;
             border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
         }
 
         .answer-input:disabled {
@@ -336,13 +639,13 @@
         }
 
         .submit-btn {
-            margin-top: 15px;
+            margin-top: 12px;
             background: #667eea;
             color: white;
             border: none;
-            padding: 12px 28px;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
             font-weight: 600;
@@ -351,8 +654,8 @@
 
         .submit-btn:hover:not(:disabled) {
             background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .submit-btn:disabled {
@@ -363,12 +666,12 @@
 
         /* Feedback */
         .feedback {
-            margin-top: 20px;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 15px;
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
             display: none;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         .feedback.correct {
@@ -409,17 +712,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 30px;
-            gap: 10px;
+            margin-top: 16px;
+            gap: 8px;
         }
 
         .nav-btn {
             background: #667eea;
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
             font-weight: 600;
@@ -430,8 +733,8 @@
         }
 
         .nav-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .nav-btn:disabled {
@@ -443,56 +746,56 @@
 
         .score {
             text-align: center;
-            font-size: 14px;
+            font-size: 13px;
             color: #666;
         }
 
         .score-breakdown {
-            font-size: 12px;
+            font-size: 11px;
             color: #999;
         }
 
         /* Results */
         .results-score {
-            font-size: 64px;
+            font-size: 52px;  /* reduced from 64px */
             font-weight: bold;
             color: #667eea;
-            margin: 30px 0;
+            margin: 20px 0;  /* reduced from 30px */
             text-align: center;
         }
 
         .results-message {
-            font-size: 24px;
+            font-size: 20px;  /* reduced from 24px */
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 16px;  /* reduced from 20px */
             text-align: center;
         }
 
         .results-details {
-            font-size: 16px;
+            font-size: 14px;  /* reduced from 16px */
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 20px;  /* reduced from 30px */
             text-align: center;
         }
 
         .review-section {
             text-align: left;
-            margin: 30px 0;
+            margin: 20px 0;  /* reduced from 30px */
             max-height: 400px;
             overflow-y: auto;
         }
 
         .review-section h2 {
-            font-size: 20px;
+            font-size: 18px;  /* reduced from 20px */
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 12px;  /* reduced from 15px */
         }
 
         .review-item {
             background: #f5f5f5;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            padding: 12px;  /* reduced from 15px */
+            border-radius: 6px;  /* reduced from 8px */
+            margin-bottom: 10px;  /* reduced from 15px */
             border-left: 4px solid #ff9800;
         }
 
@@ -503,18 +806,18 @@
         .review-item .question {
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
+            margin-bottom: 6px;  /* reduced from 8px */
         }
 
         .review-item .your-answer {
             color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 13px;  /* reduced from 14px */
+            margin-bottom: 4px;  /* reduced from 5px */
         }
 
         .review-item .correct-answer {
             color: #2e7d32;
-            font-size: 14px;
+            font-size: 13px;  /* reduced from 14px */
             font-weight: 600;
         }
 
@@ -522,20 +825,20 @@
             background: #667eea;
             color: white;
             border: none;
-            padding: 14px 32px;
-            border-radius: 8px;
-            font-size: 18px;
+            padding: 10px 20px;  /* reduced from 14px 32px */
+            border-radius: 6px;  /* reduced from 8px */
+            font-size: 14px;  /* reduced from 18px */
             cursor: pointer;
             transition: all 0.2s ease;
             font-weight: 600;
             width: 100%;
-            margin-top: 10px;
+            margin-top: 8px;  /* reduced from 10px */
         }
 
         .btn:hover {
             background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);  /* reduced from -2px */
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);  /* reduced intensity */
         }
 
         .btn.secondary {
@@ -548,122 +851,167 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- User Selection Screen -->
-        <div class="screen" id="userScreen">
-            <h1>US Citizenship Quiz</h1>
-            <p class="subtitle">Welcome! Login or create a new account</p>
+    <!-- Top Header -->
+    <div class="top-header">
+        <h1 class="header-title" id="headerTitle">You</h1>
+    </div>
 
-            <!-- Section 1: Login / Active Session -->
-            <div style="margin-bottom: 30px; padding-bottom: 30px; border-bottom: 2px solid #e0e0e0;">
-                <div id="loginSection">
-                    <h3>Login</h3>
-                    <input type="text" id="loginUsername" placeholder="Enter your username" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') loginUser()">
-                    <input type="password" id="loginPassword" placeholder="Enter your password" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') loginUser()">
-                    <button class="btn" onclick="loginUser()">Login</button>
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- You Tab Panel -->
+        <div class="tab-panel active" id="youTab">
+            <!-- Profile Card (shown when logged in) -->
+            <div class="profile-card" id="profileCard" style="display: none;">
+                <div class="profile-header">
+                    <div class="profile-username" id="profileUsername">Username</div>
                 </div>
-                <div id="activeSessionSection" style="display: none;">
-                    <h3>Active Session</h3>
-                    <p style="margin: 15px 0; color: #333;">Logged in as <strong id="loggedInUser"></strong></p>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn" onclick="startOrResumeSession()" id="sessionBtn">Start Session</button>
-                        <button class="btn secondary" onclick="logout()">Logout</button>
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <span>Best Score</span>
+                        <strong id="profileBestScore">—</strong>
+                    </div>
+                    <div class="profile-stat">
+                        <span>Completed</span>
+                        <strong id="totalCompleted">0</strong>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 2: User Status Table -->
-            <div style="margin-bottom: 30px; padding-bottom: 30px; border-bottom: 2px solid #e0e0e0;">
-                <h3>All Users</h3>
-                <div id="userStatusTable"></div>
-            </div>
-
-            <!-- Section 3: Account Creation -->
-            <div class="new-user-form" style="margin-top: 0; padding-top: 0; border-top: none;">
-                <h3>Create New Account</h3>
-                <input type="text" id="inviteCode" placeholder="Enter invite code">
-                <input type="text" id="newUserName" placeholder="Enter your username">
-                <input type="password" id="newUserPassword" placeholder="Create a password">
-                <button class="btn" onclick="createNewUser()">Create Account</button>
-            </div>
-        </div>
-
-        <!-- Mode Selection Screen -->
-        <div class="screen" id="modeScreen">
-            <h1>Select Interview Mode</h1>
-            <p class="subtitle">Choose your experience</p>
-
-            <div class="mode-selection">
-                <div class="mode-option" data-mode="formal" onclick="selectMode('formal')">
-                    <h3>Formal Mode</h3>
-                    <p>Professional USCIS interview simulation. Respectful, formal, and educational.</p>
-                </div>
-
-                <div class="mode-option" data-mode="comedy" onclick="selectMode('comedy')">
-                    <h3>Comedy Mode (18+)</h3>
-                    <p>Anthony Jeselnik-style roast. Brutal, sarcastic, offensive. Contains profanity and dark humor.</p>
+            <!-- Your Sessions Table -->
+            <div class="history-section" id="historySection" style="display: none;">
+                <h3>Your Sessions</h3>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">No sessions yet</div>
                 </div>
             </div>
 
-            <div class="warning-box" id="comedyWarning" style="display: none;">
-                <strong>⚠️ Warning:</strong> Comedy mode contains offensive language, profanity, and dark humor.
-                This mode may be offensive to you or others. Proceed at your own discretion.
+            <!-- Logout Section -->
+            <div class="history-section" id="logoutSection" style="display: none;">
+                <h3>Account</h3>
+                <button class="session-btn secondary" onclick="logout()" style="width: auto; min-width: 120px;">Logout</button>
             </div>
-
-            <button class="btn" id="startQuizBtn" onclick="startQuiz()" disabled>Start Quiz</button>
-            <button class="btn secondary" onclick="backToUser()">Back</button>
         </div>
 
-        <!-- Quiz Screen -->
-        <div class="screen" id="quizScreen">
-            <h1>US Citizenship Quiz</h1>
-            <p class="subtitle">
-                <span id="loggedInUserQuiz"></span>
-                <span id="modeIndicator">Formal Mode</span>
-                <span class="mode-toggle" id="modeToggle" onclick="toggleMode()">Change to Comedy Mode</span>
-            </p>
+        <!-- Session Tab Panel -->
+        <div class="tab-panel" id="sessionTab">
+            <!-- Mode Selection Screen -->
+            <div class="screen" id="modeScreen" style="display: none;">
+                <h1>Select Test Version</h1>
+                <p class="subtitle">Choose the test that applies to you</p>
 
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-text" id="progressText">Question 1 of 100 (0 completed)</div>
+                <div class="mode-selection">
+                    <div class="mode-option" data-test-version="2008" onclick="selectTestVersion('2008')">
+                        <h3>2008 Test (100 questions)</h3>
+                        <p>File Form N-400 before Oct 20, 2025 → Need 60/100 to pass</p>
+                    </div>
 
-            <div class="question-section">
-                <div class="question-number" id="questionNumber">Question 1 of 100</div>
-                <div class="question-text" id="questionText"></div>
-
-                <textarea class="answer-input" id="answerInput" placeholder="Type your answer here..."></textarea>
-
-                <button class="submit-btn" id="submitBtn" onclick="submitAnswer()">Submit Answer</button>
-
-                <div class="feedback" id="feedback"></div>
-            </div>
-
-            <div class="navigation">
-                <button class="nav-btn quit" onclick="quitSession()">Quit & Save</button>
-                <div class="score">
-                    <div id="score">Correct: 0 | Partial: 0</div>
-                    <div class="score-breakdown">Incorrect: 0</div>
+                    <div class="mode-option" data-test-version="2025" onclick="selectTestVersion('2025')">
+                        <h3>2025 Test (128 questions)</h3>
+                        <p>File Form N-400 on/after Oct 20, 2025 → Need 77/128 to pass (60%)</p>
+                    </div>
                 </div>
-                <button class="nav-btn" id="nextBtn" onclick="nextQuestion()" disabled>Next</button>
+
+                <h1 style="margin-top: 24px;">Select Interview Mode</h1>
+                <p class="subtitle">Choose your experience</p>
+
+                <div class="mode-selection">
+                    <div class="mode-option" data-mode="formal" onclick="selectMode('formal')">
+                        <h3>Formal Mode</h3>
+                        <p>Professional USCIS interview simulation. Respectful, formal, and educational.</p>
+                    </div>
+
+                    <div class="mode-option" data-mode="comedy" onclick="selectMode('comedy')">
+                        <h3>Comedy Mode (18+)</h3>
+                        <p>Anthony Jeselnik-style roast. Brutal, sarcastic, offensive. Contains profanity and dark humor.</p>
+                    </div>
+                </div>
+
+                <div class="warning-box" id="comedyWarning" style="display: none;">
+                    <strong>⚠️ Warning:</strong> Comedy mode contains offensive language, profanity, and dark humor.
+                    This mode may be offensive to you or others. Proceed at your own discretion.
+                </div>
+
+                <button class="btn" id="startQuizBtn" onclick="startQuiz()" disabled>Start Quiz</button>
+            </div>
+
+            <!-- Quiz Screen -->
+            <div class="screen" id="quizScreen" style="display: none;">
+                <div class="subtitle">
+                    <span id="modeIndicator">Formal Mode</span>
+                    <span class="mode-toggle" id="modeToggle" onclick="toggleMode()">Change to Comedy Mode</span>
+                </div>
+
+                <div class="question-section">
+                    <div class="question-text" id="questionText"></div>
+
+                    <textarea class="answer-input" id="answerInput" placeholder="Type your answer here..."></textarea>
+
+                    <!-- Compact Stats Row -->
+                    <div class="stats-row" id="statsRow">
+                        Question <span id="statsQuestion">1</span> of <span id="statsTotalQuestions">100</span> (<span id="statsPercent">1</span>%) •
+                        <span class="correct"><span id="statsCorrect">0</span> correct</span> •
+                        <span class="partial"><span id="statsPartial">0</span> partial</span> •
+                        <span class="incorrect"><span id="statsIncorrect">0</span> incorrect</span>
+                    </div>
+
+                    <button class="submit-btn" id="submitBtn" onclick="submitAnswer()">Submit Answer</button>
+
+                    <div class="feedback" id="feedback"></div>
+                </div>
+
+                <div class="navigation">
+                    <button class="nav-btn quit" onclick="quitSession()">Quit & Save</button>
+                    <button class="nav-btn" id="nextBtn" onclick="nextQuestion()" disabled>Next →</button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div class="screen" id="resultsScreen" style="display: none;">
+                <h1>Quiz Complete!</h1>
+                <div class="results-score" id="finalScore"></div>
+                <div class="results-message" id="resultsMessage"></div>
+                <div class="results-details" id="resultsDetails"></div>
+
+                <div class="review-section" id="reviewSection"></div>
+
+                <button class="btn" onclick="finishAndRestart()">Start New Session</button>
             </div>
         </div>
+    </div>
 
-        <!-- Results Screen -->
-        <div class="screen" id="resultsScreen">
-            <h1>Quiz Complete!</h1>
-            <div class="results-score" id="finalScore"></div>
-            <div class="results-message" id="resultsMessage"></div>
-            <div class="results-details" id="resultsDetails"></div>
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-tab" onclick="switchTab('session')">
+            <div class="nav-icon">📝</div>
+            <div class="nav-label">Session</div>
+        </button>
+        <button class="nav-tab active" onclick="switchTab('you')">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">You</div>
+        </button>
+    </div>
 
-            <div class="review-section" id="reviewSection"></div>
+    <!-- Login Modal -->
+    <div class="login-modal" id="loginModal">
+        <div class="login-modal-content">
+            <h2>Login or Create Account</h2>
 
-            <button class="btn" onclick="finishAndRestart()">Start New Session</button>
+            <h3 style="font-size: 16px; margin-top: 20px; margin-bottom: 12px;">Login</h3>
+            <input type="text" id="loginUsername" placeholder="Username" onkeypress="if(event.key === 'Enter') loginUser()">
+            <input type="password" id="loginPassword" placeholder="Password" onkeypress="if(event.key === 'Enter') loginUser()">
+            <button class="btn" onclick="loginUser()">Login</button>
+
+            <h3 style="font-size: 16px; margin-top: 24px; margin-bottom: 12px;">Create New Account</h3>
+            <input type="text" id="inviteCode" placeholder="Invite code">
+            <input type="text" id="newUserName" placeholder="Username">
+            <input type="password" id="newUserPassword" placeholder="Password">
+            <button class="btn" onclick="createNewUser()">Create Account</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="questions.js"></script>
+    <script src="questions-2025.js"></script>
     <script>
         // Supabase Configuration
         const SUPABASE_URL = 'https://calexrqhodjgxlojokbb.supabase.co';
@@ -675,6 +1023,7 @@
         // Session Management
         let currentUser = null;
         let selectedMode = null;
+        let selectedTestVersion = null;
 
         // Quiz State
         let currentQuestion = 0;
@@ -685,6 +1034,149 @@
         let hasRetried = false;
         let questionResults = [];
         let shuffledQuestions = [];
+
+        // Tab Navigation
+        function switchTab(tabName) {
+            // Update header title
+            document.getElementById('headerTitle').textContent = tabName === 'you' ? 'You' : 'Session';
+
+            // Update tab panels
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // Update nav tabs
+            document.querySelectorAll('.nav-tab').forEach((tab, index) => {
+                tab.classList.remove('active');
+                if ((index === 0 && tabName === 'session') || (index === 1 && tabName === 'you')) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // When switching to session tab, show appropriate screen
+            if (tabName === 'session') {
+                if (!currentUser) {
+                    // Not logged in, show login modal
+                    showLoginModal();
+                } else if (currentUser.current_question > 0 && !currentUser.completed) {
+                    // Resume session
+                    loadSession();
+                    showSessionScreen('quizScreen');
+                    updateModeIndicator();
+                    loadQuestion();
+                } else {
+                    // Show mode selection for new session
+                    showSessionScreen('modeScreen');
+                }
+            }
+        }
+
+        // Show/Hide Login Modal
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.add('show');
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').classList.remove('show');
+        }
+
+        // Update Profile UI
+        function updateProfile() {
+            if (!currentUser) {
+                // Hide profile elements
+                document.getElementById('profileCard').style.display = 'none';
+                document.getElementById('historySection').style.display = 'none';
+                document.getElementById('logoutSection').style.display = 'none';
+                return;
+            }
+
+            // Show and populate profile card
+            document.getElementById('profileCard').style.display = 'block';
+            document.getElementById('profileUsername').textContent = currentUser.username;
+
+            // Best score only from completed sessions
+            const bestScore = currentUser.best_score || 0;
+            document.getElementById('profileBestScore').textContent = bestScore > 0 ? `${bestScore}/100` : '—';
+
+            // Calculate total completed (this would need a DB query ideally, for now use 0)
+            document.getElementById('totalCompleted').textContent = '0';
+
+            // Show logout section
+            document.getElementById('logoutSection').style.display = 'block';
+
+            // Load sessions
+            loadSessions();
+        }
+
+        // Load Sessions (current + history)
+        function loadSessions() {
+            document.getElementById('historySection').style.display = 'block';
+            const historyList = document.getElementById('historyList');
+
+            let sessionsHTML = '';
+            let sessionNumber = 1;
+
+            // Add current session if in progress
+            if (currentUser && currentUser.current_question > 0 && !currentUser.completed) {
+                const testVersion = currentUser.test_version || '2008';
+                const totalQuestions = testVersion === '2025' ? 128 : 100;
+                const dateStarted = currentUser.last_session_date
+                    ? new Date(currentUser.last_session_date).toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      }).replace(/\//g, '-')
+                    : 'N/A';
+
+                sessionsHTML += `
+                    <div class="history-item">
+                        <div class="history-number">${sessionNumber}</div>
+                        <div class="history-date">${dateStarted}</div>
+                        <div class="history-in-progress">In progress (${testVersion})</div>
+                        <div class="history-score">${currentUser.correct_count || 0}/${totalQuestions}</div>
+                        <button class="resume-btn" onclick="resumeOrStartSession()">Resume</button>
+                    </div>
+                `;
+                sessionNumber++;
+            }
+
+            // TODO: Add completed sessions from database
+            // For now, if no sessions, show empty state
+            if (sessionsHTML === '') {
+                historyList.innerHTML = '<div class="history-empty">No sessions yet</div>';
+            } else {
+                historyList.innerHTML = sessionsHTML;
+            }
+        }
+
+        // Resume or Start Session
+        function resumeOrStartSession() {
+            if (!currentUser) return;
+
+            // Switch to Session tab
+            switchTab('session');
+
+            // If completed or new, show mode selection
+            if (currentUser.completed || currentUser.current_question === 0) {
+                showSessionScreen('modeScreen');
+            } else {
+                // Resume session
+                loadSession();
+                showSessionScreen('quizScreen');
+                updateModeIndicator();
+                loadQuestion();
+            }
+        }
+
+        // Show Session Screen (within Session tab)
+        function showSessionScreen(screenId) {
+            // Hide all screens
+            document.getElementById('modeScreen').style.display = 'none';
+            document.getElementById('quizScreen').style.display = 'none';
+            document.getElementById('resultsScreen').style.display = 'none';
+
+            // Show the requested screen
+            document.getElementById(screenId).style.display = 'block';
+        }
 
         // Load users from database
         async function loadUsers() {
@@ -818,9 +1310,9 @@
                 document.getElementById('loginUsername').value = '';
                 document.getElementById('loginPassword').value = '';
 
-                // Update UI
-                updateUserHeader();
-                await loadUserStatusTable();
+                // Hide modal and update profile
+                hideLoginModal();
+                updateProfile();
             } else {
                 alert('Invalid username or password');
             }
@@ -935,8 +1427,8 @@
             // Auto-login the new user
             sessionStorage.setItem('loggedInUser', name);
             currentUser = newUser;
-            updateUserHeader();
-            await loadUserStatusTable();
+            hideLoginModal();
+            updateProfile();
         }
 
         // Save API configuration
@@ -965,13 +1457,26 @@
             }
         }
 
+        // Select test version
+        function selectTestVersion(version) {
+            selectedTestVersion = version;
+            document.querySelectorAll('[data-test-version]').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`[data-test-version="${version}"]`).classList.add('selected');
+            updateStartButton();
+        }
+
         // Select mode
         function selectMode(mode) {
             selectedMode = mode;
-            document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('[data-mode]').forEach(el => el.classList.remove('selected'));
             document.querySelector(`[data-mode="${mode}"]`).classList.add('selected');
             document.getElementById('comedyWarning').style.display = mode === 'comedy' ? 'block' : 'none';
-            document.getElementById('startQuizBtn').disabled = false;
+            updateStartButton();
+        }
+
+        // Update start button state
+        function updateStartButton() {
+            document.getElementById('startQuizBtn').disabled = !(selectedTestVersion && selectedMode);
         }
 
         // Shuffle array function
@@ -984,14 +1489,30 @@
             return shuffled;
         }
 
+        // Get question set based on test version
+        function getQuestionSet() {
+            return selectedTestVersion === '2025' ? allQuestions2025 : allQuestions;
+        }
+
+        // Get total question count
+        function getTotalQuestions() {
+            return selectedTestVersion === '2025' ? 128 : 100;
+        }
+
+        // Get pass threshold
+        function getPassThreshold() {
+            return selectedTestVersion === '2025' ? 77 : 60;
+        }
+
         // Start quiz
         async function startQuiz() {
-            if (!selectedMode) {
-                alert('Please select a mode');
+            if (!selectedMode || !selectedTestVersion) {
+                alert('Please select both test version and mode');
                 return;
             }
 
             currentUser.mode = selectedMode;
+            currentUser.test_version = selectedTestVersion;
 
             // If completed or new, reset and shuffle questions
             if (currentUser.completed || currentUser.current_question === 0) {
@@ -1002,13 +1523,13 @@
                 currentUser.question_results = [];
                 currentUser.completed = false;
 
-                // Shuffle questions for new quiz
-                shuffledQuestions = shuffleArray(allQuestions);
+                // Shuffle questions for new quiz using the selected test version
+                shuffledQuestions = shuffleArray(getQuestionSet());
             }
 
             loadSession();
             await saveSession();
-            showScreen('quizScreen');
+            showSessionScreen('quizScreen');
             updateModeIndicator();
             loadQuestion();
         }
@@ -1019,12 +1540,6 @@
             const toggleText = selectedMode === 'comedy' ? 'Change to Formal Mode' : 'Change to Comedy Mode';
             document.getElementById('modeIndicator').textContent = modeText;
             document.getElementById('modeToggle').textContent = toggleText;
-
-            // Update logged in user in quiz header
-            const username = sessionStorage.getItem('loggedInUser');
-            if (username) {
-                document.getElementById('loggedInUserQuiz').innerHTML = `<strong>${username}</strong> | `;
-            }
         }
 
         // Update user header
@@ -1041,7 +1556,9 @@
                 if (currentUser.completed || currentUser.current_question === 0) {
                     sessionBtn.textContent = 'Start New Session';
                 } else {
-                    sessionBtn.textContent = `Resume Session (Question ${currentUser.current_question + 1}/100)`;
+                    const testVersion = currentUser.test_version || '2008';
+                    const totalQuestions = testVersion === '2025' ? 128 : 100;
+                    sessionBtn.textContent = `Resume Session (Question ${currentUser.current_question + 1}/${totalQuestions})`;
                 }
             } else {
                 // Show login section
@@ -1055,8 +1572,8 @@
             if (confirm('Are you sure you want to logout?')) {
                 sessionStorage.removeItem('loggedInUser');
                 currentUser = null;
-                updateUserHeader();
-                await loadUserStatusTable();
+                updateProfile();
+                showLoginModal();
             }
         }
 
@@ -1078,13 +1595,16 @@
             incorrectCount = currentUser.incorrect_count || 0;
             questionResults = currentUser.question_results || [];
             selectedMode = currentUser.mode || 'formal';
+            selectedTestVersion = currentUser.test_version || '2008'; // Default to 2008 for legacy sessions
         }
 
         // Save session to database
         async function saveSession() {
-            const bestScore = (!currentUser.best_score || correctCount > currentUser.best_score)
-                ? correctCount
-                : currentUser.best_score;
+            // Only update best score if session is completed
+            let bestScore = currentUser.best_score || 0;
+            if (currentUser.completed && correctCount > bestScore) {
+                bestScore = correctCount;
+            }
 
             const updated = await updateUser(currentUser.username, {
                 current_question: currentQuestion,
@@ -1095,6 +1615,7 @@
                 last_session_date: new Date().toISOString(),
                 best_score: bestScore,
                 mode: selectedMode,
+                test_version: selectedTestVersion,
                 completed: currentUser.completed
             });
 
@@ -1105,12 +1626,25 @@
 
         // Load question
         function loadQuestion() {
+            // Check if questions are loaded
+            const baseQuestions = getQuestionSet();
+            if (typeof baseQuestions === 'undefined' || !baseQuestions || baseQuestions.length === 0) {
+                console.error('Questions not loaded!');
+                alert('Error: Questions not loaded. Please refresh the page.');
+                return;
+            }
+
             // Use shuffled questions if available, otherwise fall back to original order
-            const questionSet = shuffledQuestions.length > 0 ? shuffledQuestions : allQuestions;
+            const questionSet = shuffledQuestions.length > 0 ? shuffledQuestions : baseQuestions;
             const question = questionSet[currentQuestion];
 
-            document.getElementById('questionNumber').textContent = `Question ${currentQuestion + 1} of 100`;
-            document.getElementById('questionText').textContent = question.q;
+            if (!question) {
+                console.error('Question not found at index:', currentQuestion);
+                return;
+            }
+
+            // Prefix question with number
+            document.getElementById('questionText').textContent = `Question ${currentQuestion + 1}. ${question.q}`;
             document.getElementById('answerInput').value = '';
             document.getElementById('answerInput').disabled = false;
             document.getElementById('submitBtn').disabled = false;
@@ -1120,8 +1654,7 @@
             hasAnswered = false;
             hasRetried = false;
 
-            updateProgress();
-            updateScore();
+            updateStatsRow();
         }
 
         // Submit answer
@@ -1265,8 +1798,7 @@
                     }
                 }
 
-                updateScore();
-                updateProgress();
+                updateStatsRow();
                 await saveSession();
             }
         }
@@ -1305,7 +1837,8 @@
 
         // Next question
         async function nextQuestion() {
-            if (currentQuestion < 99) {
+            const totalQuestions = getTotalQuestions();
+            if (currentQuestion < totalQuestions - 1) {
                 currentQuestion++;
                 await saveSession();
                 loadQuestion();
@@ -1314,11 +1847,26 @@
             }
         }
 
+        // Update Stats Row
+        function updateStatsRow() {
+            const totalQuestions = getTotalQuestions();
+            const totalCompleted = correctCount + partialCount + incorrectCount;
+            const percentComplete = Math.round(((currentQuestion + 1) / totalQuestions) * 100);
+
+            document.getElementById('statsQuestion').textContent = currentQuestion + 1;
+            document.getElementById('statsTotalQuestions').textContent = totalQuestions;
+            document.getElementById('statsPercent').textContent = percentComplete;
+            document.getElementById('statsCorrect').textContent = correctCount;
+            document.getElementById('statsPartial').textContent = partialCount;
+            document.getElementById('statsIncorrect').textContent = incorrectCount;
+        }
+
         // Quit session
         async function quitSession() {
             if (confirm('Save your progress and quit?')) {
                 await saveSession();
-                await showUserScreen();
+                updateProfile();
+                switchTab('you');
             }
         }
 
@@ -1331,12 +1879,16 @@
 
         // Show results
         function showResults() {
-            showScreen('resultsScreen');
+            showSessionScreen('resultsScreen');
 
-            const percentage = Math.round((correctCount / 100) * 100);
+            const totalQuestions = getTotalQuestions();
+            const passThreshold = getPassThreshold();
+            const percentage = Math.round((correctCount / totalQuestions) * 100);
+            const passed = correctCount >= passThreshold;
+
             document.getElementById('finalScore').textContent = `${percentage}%`;
             document.getElementById('resultsDetails').innerHTML = `
-                <strong>Correct:</strong> ${correctCount}<br>
+                <strong>Correct:</strong> ${correctCount}/${totalQuestions} (Need ${passThreshold} to pass)<br>
                 <strong>Partial:</strong> ${partialCount}<br>
                 <strong>Incorrect:</strong> ${incorrectCount}
             `;
@@ -1350,7 +1902,7 @@
                 message = selectedMode === 'comedy' ?
                     'Not terrible. Keep studying, genius.' :
                     'Good job! Keep studying!';
-            } else if (percentage >= 60) {
+            } else if (passed) {
                 message = selectedMode === 'comedy' ?
                     'Barely passing. Like your life choices.' :
                     'Passing! But more practice recommended.';
@@ -1384,33 +1936,8 @@
 
         // Finish and restart
         async function finishAndRestart() {
-            await showUserScreen();
-        }
-
-        // Back to user selection
-        async function backToUser() {
-            await showUserScreen();
-        }
-
-        // Update progress
-        function updateProgress() {
-            // Calculate completed from counts to ensure consistency
-            const totalCompleted = correctCount + partialCount + incorrectCount;
-            const progress = (totalCompleted / 100) * 100;
-            document.getElementById('progressFill').style.width = progress + '%';
-            document.getElementById('progressText').textContent = `Question ${currentQuestion + 1} of 100 (${totalCompleted} completed)`;
-        }
-
-        // Update score
-        function updateScore() {
-            document.getElementById('score').innerHTML = `Correct: ${correctCount} | Partial: ${partialCount}`;
-            document.querySelector('.score-breakdown').textContent = `Incorrect: ${incorrectCount}`;
-        }
-
-        // Show screen
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
-            document.getElementById(screenId).classList.add('show');
+            updateProfile();
+            switchTab('you');
         }
 
         // Check for existing session and auto-login
@@ -1419,11 +1946,9 @@
             if (username) {
                 const user = await getUser(username);
                 if (user) {
-                    // Auto-login - restore the user but stay on user screen
+                    // Auto-login - restore the user
                     currentUser = user;
-                    updateUserHeader();
-                    await loadUserStatusTable();
-                    showScreen('userScreen');
+                    updateProfile();
                     return true;
                 }
             }
@@ -1432,8 +1957,18 @@
 
         // Initialize
         (async () => {
+            // Check if questions are loaded
+            if (typeof allQuestions === 'undefined' || !allQuestions || allQuestions.length === 0) {
+                console.error('FATAL: questions.js not loaded properly!');
+                alert('Error loading quiz questions. Please refresh the page.');
+                return;
+            }
+
+            console.log(`Loaded ${allQuestions.length} questions successfully`);
+
             if (!await checkExistingSession()) {
-                await showUserScreen();
+                // No existing session, show login modal
+                showLoginModal();
             }
         })();
     </script>
