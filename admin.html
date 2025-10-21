@@ -96,6 +96,11 @@
             background: #f44336;
         }
 
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .code-list,
         .user-list {
             margin: 20px 0;
@@ -180,6 +185,27 @@
             font-weight: 600;
             color: #333;
         }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+            color: #667eea;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -208,7 +234,38 @@
             </div>
 
             <h2>Invite Codes</h2>
+
+            <!-- Tabs for Unused/Used -->
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e0e0e0;">
+                <button id="unusedTab" class="tab-button active" onclick="switchCodeTab('unused')">
+                    Unused (<span id="unusedCount">0</span>)
+                </button>
+                <button id="usedTab" class="tab-button" onclick="switchCodeTab('used')">
+                    Used (<span id="usedCount">0</span>)
+                </button>
+            </div>
+
+            <!-- Limit selector -->
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <label for="codeLimit" style="margin: 0;">Show:</label>
+                <select id="codeLimit" onchange="changeCodeLimit()" style="padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                    <option value="25">25</option>
+                </select>
+                <span style="color: #666; font-size: 14px;">codes per page</span>
+            </div>
+
             <div id="codeList" class="code-list"></div>
+
+            <!-- Pagination -->
+            <div id="codePagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
+                <button class="btn secondary" onclick="previousCodePage()" id="prevCodeBtn" style="padding: 8px 16px;">← Previous</button>
+                <span id="codePageInfo" style="color: #666; font-size: 14px;">Page 1 of 1</span>
+                <button class="btn secondary" onclick="nextCodePage()" id="nextCodeBtn" style="padding: 8px 16px;">Next →</button>
+            </div>
 
             <h2>Manage Admins</h2>
             <div class="form-group">
@@ -227,6 +284,16 @@
             <h2>All Users</h2>
             <div id="userList" class="user-list"></div>
         </div>
+
+        <!-- User Details Screen -->
+        <div class="screen" id="userDetailsScreen">
+            <h1>
+                <button class="btn secondary" onclick="backToUserList()" style="margin-right: 20px;">← Back</button>
+                User Details
+                <button class="btn secondary logout-btn" onclick="logout()">Logout</button>
+            </h1>
+            <div id="userDetailsContent"></div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -237,6 +304,12 @@
 
         // Initialize Supabase client
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Invite codes pagination state
+        let currentCodeTab = 'unused'; // 'unused' or 'used'
+        let currentCodePage = 1;
+        let codeLimit = 5;
+        let allCodes = [];
 
         // Initialize admin system
         async function initAdminSystem() {
@@ -358,14 +431,50 @@
                 return;
             }
 
+            allCodes = codes || [];
+
+            // Update tab counts
+            const unusedCodes = allCodes.filter(c => !c.used);
+            const usedCodes = allCodes.filter(c => c.used);
+            document.getElementById('unusedCount').textContent = unusedCodes.length;
+            document.getElementById('usedCount').textContent = usedCodes.length;
+
+            // Render current page
+            renderCodeList();
+        }
+
+        // Render code list based on current tab and page
+        function renderCodeList() {
             const codeList = document.getElementById('codeList');
 
-            if (!codes || codes.length === 0) {
-                codeList.innerHTML = '<p style="color: #999;">No invite codes generated yet.</p>';
+            // Filter codes based on current tab
+            const filteredCodes = currentCodeTab === 'unused'
+                ? allCodes.filter(c => !c.used)
+                : allCodes.filter(c => c.used);
+
+            if (filteredCodes.length === 0) {
+                codeList.innerHTML = `<p style="color: #999;">No ${currentCodeTab} invite codes.</p>`;
+                document.getElementById('codePagination').style.display = 'none';
                 return;
             }
 
-            codeList.innerHTML = codes.map(c => `
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredCodes.length / codeLimit);
+
+            // Ensure current page is valid
+            if (currentCodePage > totalPages) {
+                currentCodePage = totalPages;
+            }
+            if (currentCodePage < 1) {
+                currentCodePage = 1;
+            }
+
+            const startIndex = (currentCodePage - 1) * codeLimit;
+            const endIndex = startIndex + codeLimit;
+            const pagesCodes = filteredCodes.slice(startIndex, endIndex);
+
+            // Render codes
+            codeList.innerHTML = pagesCodes.map(c => `
                 <div class="code-item ${c.used ? 'used' : ''}">
                     <div>
                         <div class="code">${c.code}</div>
@@ -379,6 +488,52 @@
                     </span>
                 </div>
             `).join('');
+
+            // Update pagination controls
+            document.getElementById('codePageInfo').textContent = `Page ${currentCodePage} of ${totalPages}`;
+            document.getElementById('prevCodeBtn').disabled = currentCodePage === 1;
+            document.getElementById('nextCodeBtn').disabled = currentCodePage === totalPages;
+            document.getElementById('codePagination').style.display = 'flex';
+        }
+
+        // Switch between unused/used tabs
+        function switchCodeTab(tab) {
+            currentCodeTab = tab;
+            currentCodePage = 1; // Reset to first page
+
+            // Update tab button styles
+            document.getElementById('unusedTab').classList.toggle('active', tab === 'unused');
+            document.getElementById('usedTab').classList.toggle('active', tab === 'used');
+
+            renderCodeList();
+        }
+
+        // Change code limit
+        function changeCodeLimit() {
+            codeLimit = parseInt(document.getElementById('codeLimit').value);
+            currentCodePage = 1; // Reset to first page
+            renderCodeList();
+        }
+
+        // Navigate to previous page
+        function previousCodePage() {
+            if (currentCodePage > 1) {
+                currentCodePage--;
+                renderCodeList();
+            }
+        }
+
+        // Navigate to next page
+        function nextCodePage() {
+            const filteredCodes = currentCodeTab === 'unused'
+                ? allCodes.filter(c => !c.used)
+                : allCodes.filter(c => c.used);
+            const totalPages = Math.ceil(filteredCodes.length / codeLimit);
+
+            if (currentCodePage < totalPages) {
+                currentCodePage++;
+                renderCodeList();
+            }
         }
 
         // Create admin
@@ -464,44 +619,73 @@
         }
 
         // Load users
-        function loadUsers() {
-            const users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
-            const userList = document.getElementById('userList');
+        async function loadUsers() {
+            try {
+                // Load from Supabase database
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-            if (users.length === 0) {
-                userList.innerHTML = '<p style="color: #999;">No users registered yet.</p>';
-                return;
-            }
+                if (error) {
+                    console.error('Error loading users:', error);
+                    document.getElementById('userList').innerHTML = '<p style="color: #f44336;">Error loading users from database</p>';
+                    return;
+                }
 
-            userList.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Password</th>
-                            <th>Invite Code</th>
-                            <th>Best Score</th>
-                            <th>Last Session</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${users.map((u, index) => `
+                const userList = document.getElementById('userList');
+
+                if (!users || users.length === 0) {
+                    userList.innerHTML = '<p style="color: #999;">No users registered yet.</p>';
+                    return;
+                }
+
+                userList.innerHTML = `
+                    <table>
+                        <thead>
                             <tr>
-                                <td>${u.name} ${u.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}</td>
-                                <td style="font-family: monospace;">${u.password || 'N/A'}</td>
-                                <td style="font-family: monospace;">${u.inviteCode || 'N/A'}</td>
-                                <td>${u.bestScore || 0}/100</td>
-                                <td>${u.lastSessionDate ? new Date(u.lastSessionDate).toLocaleString() : 'Never'}</td>
-                                <td>
-                                    <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="resetPassword('${u.name}')">Reset Password</button>
-                                    <button class="btn danger" style="padding: 6px 12px; font-size: 12px; margin-left: 5px;" onclick="deleteUser('${u.name}')">Delete</button>
-                                </td>
+                                <th>Username</th>
+                                <th>Subscription</th>
+                                <th>Created</th>
+                                <th>Last Session</th>
+                                <th>Actions</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
+                        </thead>
+                        <tbody>
+                            ${users.map((u) => {
+                                const isPremium = u.subscription_tier === 'premium';
+                                const isExpired = isPremium && u.subscription_expires_at && new Date(u.subscription_expires_at) < new Date();
+                                const expiresText = isPremium && u.subscription_expires_at
+                                    ? `Expires: ${new Date(u.subscription_expires_at).toLocaleDateString()}`
+                                    : '';
+
+                                return `
+                                <tr>
+                                    <td><a href="#" onclick="showUserDetails('${u.username}'); return false;" style="color: #667eea; text-decoration: none; font-weight: 600;">${u.username}</a></td>
+                                    <td>
+                                        <span style="color: ${isPremium && !isExpired ? '#22c55e' : '#666'}; font-weight: 600;">
+                                            ${isPremium && !isExpired ? '🏆 Premium' : 'Free'}
+                                        </span>
+                                        ${expiresText ? `<br><span style="font-size: 11px; color: ${isExpired ? '#f44336' : '#666'};">${expiresText}</span>` : ''}
+                                    </td>
+                                    <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Unknown'}</td>
+                                    <td>${u.last_session_date ? new Date(u.last_session_date).toLocaleString() : 'Never'}</td>
+                                    <td>
+                                        ${!isPremium || isExpired ? `
+                                            <button class="btn" style="padding: 6px 12px; font-size: 12px; margin-right: 5px;" onclick="upgradeToPremium('${u.username}')">Upgrade</button>
+                                        ` : ''}
+                                        <button class="btn danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteUser('${u.username}')">Delete</button>
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('userList').innerHTML = '<p style="color: #f44336;">Error loading users</p>';
+            }
         }
 
         // Reset user password
@@ -530,14 +714,174 @@
         }
 
         // Delete user
-        function deleteUser(username) {
-            if (confirm(`Are you sure you want to delete user "${username}"? This cannot be undone.`)) {
-                let users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
-                users = users.filter(u => u.name !== username);
-                localStorage.setItem('quizUsers', JSON.stringify(users));
-                loadUsers();
-                alert('User deleted successfully');
+        async function deleteUser(username) {
+            if (confirm(`Are you sure you want to delete user "${username}"? This will permanently delete all their data including quiz progress. This cannot be undone.`)) {
+                try {
+                    // Delete from Supabase database
+                    const { error } = await supabase
+                        .from('users')
+                        .delete()
+                        .eq('username', username);
+
+                    if (error) {
+                        console.error('Error deleting user from database:', error);
+                        alert('Error deleting user from database: ' + error.message);
+                        return;
+                    }
+
+                    // Also delete from localStorage for backwards compatibility
+                    let users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+                    users = users.filter(u => u.name !== username);
+                    localStorage.setItem('quizUsers', JSON.stringify(users));
+
+                    // If we're on the user details screen, navigate back to user list
+                    if (document.getElementById('userDetailsScreen').classList.contains('active')) {
+                        backToUserList();
+                    } else {
+                        loadUsers();
+                    }
+
+                    alert('User deleted successfully from database');
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting user: ' + error.message);
+                }
             }
+        }
+
+        // Upgrade user to premium
+        async function upgradeToPremium(username) {
+            const weeks = prompt(`How many weeks of premium access for ${username}?`, '4');
+            if (!weeks || isNaN(weeks) || weeks <= 0) {
+                if (weeks !== null) {
+                    alert('Please enter a valid number of weeks');
+                }
+                return;
+            }
+
+            try {
+                // Calculate expiration date
+                const expirationDate = new Date();
+                expirationDate.setDate(expirationDate.getDate() + (parseInt(weeks) * 7));
+
+                // Update user in database
+                const { error } = await supabase
+                    .from('users')
+                    .update({
+                        subscription_tier: 'premium',
+                        subscription_expires_at: expirationDate.toISOString()
+                    })
+                    .eq('username', username);
+
+                if (error) {
+                    console.error('Error upgrading user:', error);
+                    alert('Error upgrading user: ' + error.message);
+                    return;
+                }
+
+                loadUsers();
+                alert(`User ${username} has been upgraded to Premium for ${weeks} week(s) (expires ${expirationDate.toLocaleDateString()})`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error upgrading user: ' + error.message);
+            }
+        }
+
+        // Show user details
+        async function showUserDetails(username) {
+            try {
+                // Load user from Supabase database
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username);
+
+                if (error || !users || users.length === 0) {
+                    alert('Error loading user details');
+                    return;
+                }
+
+                const user = users[0];
+                const isPremium = user.subscription_tier === 'premium';
+                const isExpired = isPremium && user.subscription_expires_at && new Date(user.subscription_expires_at) < new Date();
+
+                const detailsContent = document.getElementById('userDetailsContent');
+                detailsContent.innerHTML = `
+                    <div class="info-box" style="background: #f5f5f5; margin-bottom: 30px;">
+                        <h2 style="margin: 0 0 10px 0; color: #667eea;">${user.username}</h2>
+                        <p style="margin: 5px 0;">
+                            <strong>Account Created:</strong> ${user.created_at ? new Date(user.created_at).toLocaleString() : 'Unknown'}
+                        </p>
+                        <p style="margin: 5px 0;">
+                            <strong>Subscription:</strong>
+                            <span style="color: ${isPremium && !isExpired ? '#22c55e' : '#666'}; font-weight: 600;">
+                                ${isPremium && !isExpired ? '🏆 Premium' : 'Free'}
+                            </span>
+                            ${isPremium && user.subscription_expires_at ? `<br><span style="font-size: 12px; color: ${isExpired ? '#f44336' : '#666'};">Expires: ${new Date(user.subscription_expires_at).toLocaleString()}</span>` : ''}
+                        </p>
+                    </div>
+
+                    <h2>Quiz Progress</h2>
+                    <table style="margin-bottom: 30px;">
+                        <tbody>
+                            <tr>
+                                <td><strong>Current Question</strong></td>
+                                <td>${user.current_question || 0}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Progress</strong></td>
+                                <td>
+                                    <span style="color: #22c55e; font-weight: 600;">${user.correct_count || 0} Correct</span> /
+                                    <span style="color: #f59e0b; font-weight: 600;">${user.partial_count || 0} Partial</span> /
+                                    <span style="color: #ef4444; font-weight: 600;">${user.incorrect_count || 0} Incorrect</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Test Version</strong></td>
+                                <td>${user.test_version || 'Not Started'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mode</strong></td>
+                                <td style="text-transform: capitalize;">${user.mode || 'Not Selected'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Best Score</strong></td>
+                                <td>${user.best_score || 0}/${user.test_version === '2025' ? 128 : 100}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Completed</strong></td>
+                                <td>${user.completed ? '<span style="color: #22c55e; font-weight: 600;">✓ Yes</span>' : '<span style="color: #f59e0b;">In Progress</span>'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Session</strong></td>
+                                <td>${user.last_session_date ? new Date(user.last_session_date).toLocaleString() : 'Never'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2>Actions</h2>
+                    <div style="display: flex; gap: 10px;">
+                        ${!isPremium || isExpired ? `
+                            <button class="btn" onclick="upgradeToPremium('${user.username}')">Upgrade to Premium</button>
+                        ` : ''}
+                        <button class="btn danger" onclick="deleteUser('${user.username}')">Delete User</button>
+                    </div>
+                `;
+
+                // Switch to user details screen
+                document.getElementById('dashboardScreen').classList.remove('active');
+                document.getElementById('userDetailsScreen').classList.add('active');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading user details');
+            }
+        }
+
+        // Back to user list
+        function backToUserList() {
+            document.getElementById('userDetailsScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+            loadUsers(); // Refresh user list in case anything changed
         }
 
         // Logout
@@ -545,6 +889,7 @@
             sessionStorage.removeItem('adminLoggedIn');
             sessionStorage.removeItem('adminUsername');
             document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('userDetailsScreen').classList.remove('active');
             document.getElementById('loginScreen').classList.add('active');
             document.getElementById('adminPassword').value = '';
         }
