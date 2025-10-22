@@ -1,0 +1,39 @@
+{
+  "name": "citizenshipquizweb",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && echo '✓ Type check passed'"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/datetimepicker": "^8.4.5",
+    "@react-navigation/bottom-tabs": "^7.5.0",
+    "@react-navigation/native": "^7.1.18",
+    "@react-navigation/native-stack": "^7.5.0",
+    "@react-oauth/google": "^0.12.2",
+    "@stripe/stripe-js": "^8.1.0",
+    "@supabase/supabase-js": "^2.76.1",
+    "expo": "~54.0.18",
+    "expo-status-bar": "~3.0.8",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "^5.6.1",
+    "react-native-screens": "^4.18.0",
+    "react-native-web": "^0.21.0",
+    "stripe": "^19.1.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
