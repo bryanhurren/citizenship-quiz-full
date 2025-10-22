@@ -186,6 +186,33 @@
             color: #333;
         }
 
+        /* Email column styling for text overflow */
+        td:first-child {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Make email column responsive to window size */
+        @media (min-width: 768px) {
+            td:first-child {
+                max-width: 250px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            td:first-child {
+                max-width: 300px;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            td:first-child {
+                max-width: 350px;
+            }
+        }
+
         .tab-button {
             background: transparent;
             border: none;
@@ -661,7 +688,7 @@
 
                                 return `
                                 <tr>
-                                    <td><a href="#" onclick="showUserDetails('${u.username}'); return false;" style="color: #667eea; text-decoration: none; font-weight: 600;">${u.username}</a></td>
+                                    <td title="${u.username}"><a href="#" onclick="showUserDetails('${u.username}'); return false;" style="color: #667eea; text-decoration: none; font-weight: 600;">${u.username}</a></td>
                                     <td>
                                         <span style="color: ${isPremium && !isExpired ? '#22c55e' : '#666'}; font-weight: 600;">
                                             ${isPremium && !isExpired ? '🏆 Premium' : 'Free'}

@@ -2,18 +2,18 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 // Configure notification handler
-// Only show notifications when app is in background/closed
-Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const appState = await Notifications.getPresentedNotificationsAsync();
-
-    return {
-      shouldShowBanner: false,  // Don't show when app is in foreground
-      shouldPlaySound: false,   // Don't play sound when app is in foreground
-      shouldSetBadge: false,
-    };
-  },
-});
+// Show notifications in all states
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+} catch (error) {
+  console.warn('Notifications module not ready:', error);
+}
 
 /**
  * Request notification permissions from the user

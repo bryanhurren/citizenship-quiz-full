@@ -316,3 +316,31 @@ Must follow [Google's branding guidelines](https://developers.google.com/identit
    - Explain root cause
    - Propose solution options
    - Get approval before implementing
+
+## Repeated Request Protocol
+
+**When the user requests the same action 3+ times:**
+
+This pattern indicates the previous attempts were unsuccessful. When this occurs, Claude must:
+
+1. **Acknowledge the Pattern**
+   - Recognize that repeated requests signal a deeper issue
+   - Stop attempting the same approach
+
+2. **Automatic Investigation**
+   - Search the web for known bugs, issues, or limitations related to the task
+   - Review GitHub issues, Stack Overflow, and official documentation
+   - Check for version-specific problems or compatibility issues
+
+3. **Holistic Assessment**
+   - Evaluate whether there's a fundamental blocker preventing success
+   - Consider alternative approaches or workarounds
+   - Assess if the root cause is environmental, configuration-based, or a known limitation
+
+4. **Present Comprehensive Findings**
+   - Summarize research findings
+   - Explain why previous attempts failed
+   - Propose alternative solutions or paths forward
+   - If no viable solution exists, clearly state this with supporting evidence
+
+**Example**: If asked to "fix the build error" 3+ times, don't just retry the same fix. Instead, research the specific error, check if it's a known issue with the library version, and present a comprehensive assessment of the problem and potential solutions.

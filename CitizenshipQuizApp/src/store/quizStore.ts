@@ -111,6 +111,8 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
 
   resetQuiz: () =>
     set({
+      selectedMode: null,
+      selectedTestVersion: null,
       currentQuestion: 0,
       correctCount: 0,
       partialCount: 0,

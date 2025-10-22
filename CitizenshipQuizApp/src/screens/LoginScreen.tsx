@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Input, Card, GoogleSignInButton } from '../components';
+import { Button, Input, Card, GoogleSignInButton, WelcomeModal } from '../components';
 import { Colors, Spacing, FontSizes } from '../constants/theme';
 import { useQuizStore, storeLoggedInUser } from '../store/quizStore';
 import {
@@ -17,10 +19,13 @@ import {
   createUser,
   validateInviteCode,
   markInviteCodeAsUsed,
+  updateUser as updateUserInDb,
 } from '../services/supabase';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerForPushNotificationsAsync, scheduleDailyReminder } from '../services/notifications';
 
 export const LoginScreen = () => {
   const navigation = useNavigation();
@@ -39,6 +44,22 @@ export const LoginScreen = () => {
   // Error state
   const [error, setError] = useState('');
 
+  // Helper function to request notification permissions after account creation
+  const requestNotificationPermissionsForNewUser = async (userId: number) => {
+    try {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        // Permission granted - schedule daily reminder at 9 AM
+        await scheduleDailyReminder('09:00');
+        console.log('✅ Notification permissions granted for new user');
+      } else {
+        console.log('⚠️ Notification permissions denied by user');
+      }
+    } catch (error) {
+      console.error('Error requesting notification permissions:', error);
+    }
+  };
+
   const handleAppleSignIn = async () => {
     setError('');
     setIsLoading(true);
@@ -54,23 +75,56 @@ export const LoginScreen = () => {
       // Extract user info from Apple credential
       const email = credential.email || `${credential.user}@privaterelay.appleid.com`;
       const name = credential.fullName?.givenName || 'User';
+      // Note: Apple Sign-In doesn't provide profile pictures
 
       // Check if user already exists
       const existingUser = await getUser(email);
 
       if (existingUser) {
-        // User exists, log them in
+        // Existing user - log them in
         await storeLoggedInUser(email);
         setCurrentUser(existingUser);
-        // Navigate to the Main tab navigator, which will show You tab
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' as never }],
-        });
+        // Navigate to Main - You tab
+        navigation.navigate('Main' as never);
       } else {
-        // New user - auto-create account (invite code disabled)
-        setPendingOAuthUser({ email, name, provider: 'apple' });
-        await handleInviteCodeSubmit();
+        // New user - auto-create account and go to Mode Selection
+        const newUser = await createUser({
+          username: email,
+          password: '', // No password for OAuth users
+          invite_code: 'OAUTH-AUTO', // Auto-created OAuth users
+          current_question: 0,
+          correct_count: 0,
+          partial_count: 0,
+          incorrect_count: 0,
+          question_results: [],
+          completed: false,
+          best_score: 0,
+          last_session_date: null,
+          notification_enabled: true, // Default to ON for new users
+          notification_time: '09:00', // Default to 9 AM
+          profile_picture: null, // Apple doesn't provide profile pictures
+        });
+
+        if (newUser) {
+          // Auto-login
+          await storeLoggedInUser(email);
+
+          // Store flag that this is a new user for Mode Selection screen
+          await AsyncStorage.setItem('isNewUser', 'true');
+
+          setCurrentUser(newUser);
+
+          // Request notification permissions for new users
+          await requestNotificationPermissionsForNewUser(newUser.id);
+
+          // Navigate to Main tab navigator, opening the Session tab with Mode Selection
+          navigation.navigate('Main' as never, {
+            screen: 'Session',
+            params: { screen: 'ModeSelection' },
+          } as never);
+        } else {
+          setError('Error creating account');
+        }
       }
     } catch (error: any) {
       if (error.code === 'ERR_CANCELED') {
@@ -100,6 +154,9 @@ export const LoginScreen = () => {
 
       const email = user?.email || data?.email;
       const name = user?.givenName || user?.name || data?.givenName || data?.name || 'User';
+      const photo = user?.photo || data?.photo || null;
+
+      console.log('Google profile photo URL:', photo);
 
       if (!email) {
         throw new Error('No email received from Google Sign-In');
@@ -109,18 +166,55 @@ export const LoginScreen = () => {
       const existingUser = await getUser(email);
 
       if (existingUser) {
-        // User exists, log them in
+        // Existing user - log them in
+        // Update profile picture if it's new or different
+        if (photo && existingUser.profile_picture !== photo) {
+          await updateUserInDb(existingUser.id, { profile_picture: photo });
+          existingUser.profile_picture = photo;
+        }
         await storeLoggedInUser(email);
         setCurrentUser(existingUser);
-        // Navigate to the Main tab navigator, which will show You tab
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' as never }],
-        });
+        // Navigate to Main - You tab
+        navigation.navigate('Main' as never);
       } else {
-        // New user - auto-create account (invite code disabled)
-        setPendingOAuthUser({ email, name, provider: 'google' });
-        await handleInviteCodeSubmit();
+        // New user - auto-create account and go to Mode Selection
+        const newUser = await createUser({
+          username: email,
+          password: '', // No password for OAuth users
+          invite_code: 'OAUTH-AUTO', // Auto-created OAuth users
+          current_question: 0,
+          correct_count: 0,
+          partial_count: 0,
+          incorrect_count: 0,
+          question_results: [],
+          completed: false,
+          best_score: 0,
+          last_session_date: null,
+          notification_enabled: true, // Default to ON for new users
+          notification_time: '09:00', // Default to 9 AM
+          profile_picture: photo, // Store Google profile picture
+        });
+
+        if (newUser) {
+          // Auto-login
+          await storeLoggedInUser(email);
+
+          // Store flag that this is a new user for Mode Selection screen
+          await AsyncStorage.setItem('isNewUser', 'true');
+
+          setCurrentUser(newUser);
+
+          // Request notification permissions for new users
+          await requestNotificationPermissionsForNewUser(newUser.id);
+
+          // Navigate to Main tab navigator, opening the Session tab with Mode Selection
+          navigation.navigate('Main' as never, {
+            screen: 'Session',
+            params: { screen: 'ModeSelection' },
+          } as never);
+        } else {
+          setError('Error creating account');
+        }
       }
     } catch (error: any) {
       console.log('Google Sign-In Error:', error);
@@ -180,6 +274,8 @@ export const LoginScreen = () => {
         completed: false,
         best_score: 0,
         last_session_date: null,
+        notification_enabled: true, // Default to ON for new users
+        notification_time: '09:00', // Default to 9 AM
       });
 
       if (newUser) {
@@ -257,17 +353,22 @@ export const LoginScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Login or Create Account</Text>
-        <Text style={styles.subtitle}>
-          Sign in with Apple or Google to continue
-        </Text>
+      <View style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.appTitle}>AI Citizenship Quiz</Text>
+          <Text style={styles.appDescription}>
+            Prepare for your US Citizenship civics test with AI-powered feedback. Choose your test version and quiz mode to get started!
+          </Text>
+        </View>
 
-        <Card>
+        <View style={styles.loginSection}>
+          <Text style={styles.loginTitle}>Sign In to Continue</Text>
+
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           {Platform.OS === 'ios' && (
@@ -284,13 +385,8 @@ export const LoginScreen = () => {
             onPress={handleGoogleSignIn}
             loading={isLoading}
           />
-        </Card>
-
-        <Text style={styles.footerText}>
-          Sign in to create an account and track your progress
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </View>
+      </View>
   </SafeAreaView>
   );
 };
@@ -302,7 +398,46 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    justifyContent: 'flex-start',
+    padding: Spacing.xl,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    paddingTop: Spacing.xl,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: Spacing.lg,
+  },
+  appTitle: {
+    fontSize: FontSizes.xxxl,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  appDescription: {
+    fontSize: FontSizes.base,
+    color: Colors.textLight,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: Spacing.md,
+  },
+  loginSection: {
+    marginTop: Spacing.xxxl,
+  },
+  loginTitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+  },
+  appleButton: {
+    width: '100%',
+    height: 50,
+    marginBottom: Spacing.md,
   },
   scrollContent: {
     padding: Spacing.lg,
@@ -321,20 +456,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  appleButton: {
-    width: '100%',
-    height: 50,
-    marginBottom: Spacing.md,
-  },
   cancelButton: {
     marginTop: Spacing.md,
-  },
-  footerText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textMuted,
-    marginTop: Spacing.lg,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   errorText: {
     color: Colors.error,

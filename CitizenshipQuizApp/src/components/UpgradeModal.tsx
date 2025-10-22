@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { Button } from './Button';
 
 interface UpgradeModalProps {
   visible: boolean;
   onClose: () => void;
-  onUpgrade: () => void;
+  onUpgrade: () => Promise<void>;
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({
@@ -14,17 +14,29 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   onClose,
   onUpgrade,
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleUpgrade = async () => {
+    setIsProcessing(true);
+    try {
+      await onUpgrade();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <Modal
       animationType="fade"
       transparent={true}
       visible={visible}
-      onRequestClose={onClose}
+      onRequestClose={isProcessing ? undefined : onClose}
     >
       <TouchableOpacity
         style={styles.overlay}
         activeOpacity={1}
-        onPress={onClose}
+        onPress={isProcessing ? undefined : onClose}
+        disabled={isProcessing}
       >
         <TouchableOpacity
           style={styles.modalContainer}
@@ -76,17 +88,30 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <View style={styles.buttonContainer}>
               <Button
                 title="Upgrade Now"
-                onPress={onUpgrade}
+                onPress={handleUpgrade}
                 style={styles.upgradeButton}
+                disabled={isProcessing}
               />
               <Button
                 title="Maybe Later"
                 onPress={onClose}
                 variant="secondary"
                 style={styles.closeButton}
+                disabled={isProcessing}
               />
             </View>
           </ScrollView>
+
+          {/* Processing Overlay */}
+          {isProcessing && (
+            <View style={styles.processingOverlay}>
+              <View style={styles.processingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.processingText}>Processing...</Text>
+                <Text style={styles.processingSubtext}>This may take a few seconds</Text>
+              </View>
+            </View>
+          )}
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -170,5 +195,27 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     marginBottom: 0,
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+  },
+  processingContainer: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  processingText: {
+    fontSize: FontSizes.lg,
+    fontWeight: '600',
+    color: Colors.text,
+    marginTop: Spacing.md,
+  },
+  processingSubtext: {
+    fontSize: FontSizes.sm,
+    color: Colors.textLight,
+    marginTop: Spacing.xs,
   },
 });

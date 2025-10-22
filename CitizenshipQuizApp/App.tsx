@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// Import notifications service to initialize notification handler
+import './src/services/notifications';
 
 export default function App() {
   useEffect(() => {

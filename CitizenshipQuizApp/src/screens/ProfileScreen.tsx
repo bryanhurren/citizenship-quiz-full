@@ -259,8 +259,9 @@ export const ProfileScreen = () => {
     setError('');
 
     try {
-      // Request notification permission during account creation
-      const notificationToken = await registerForPushNotificationsAsync();
+      // TEMPORARILY DISABLED - Request notification permission during account creation
+      // const notificationToken = await registerForPushNotificationsAsync();
+      const notificationToken = null; // TEMP: Disabled notifications
 
       const newUser = await createUser({
         username: pendingOAuthUser.email,
@@ -290,10 +291,10 @@ export const ProfileScreen = () => {
         await storeLoggedInUser(pendingOAuthUser.email);
         setCurrentUser(newUser);
 
-        // If permission granted, schedule daily reminder
-        if (notificationToken) {
-          await scheduleDailyReminder('09:00');
-        }
+        // TEMPORARILY DISABLED - If permission granted, schedule daily reminder
+        // if (notificationToken) {
+        //   await scheduleDailyReminder('09:00');
+        // }
 
         setPendingOAuthUser(null);
         setShowInviteCodePrompt(false);
@@ -316,8 +317,8 @@ export const ProfileScreen = () => {
         style: 'destructive',
         onPress: async () => {
           await clearLoggedInUser();
-          // DON'T reset quiz state - session data persists in database
-          // It will be restored when user logs back in
+          // Reset all quiz state to prevent data leaking to next user
+          resetQuiz();
           setCurrentUser(null);
           // Navigate to Login screen
           navigation.navigate('Login' as never);
@@ -341,17 +342,18 @@ export const ProfileScreen = () => {
 
       if (!offerings || !offerings.availablePackages || offerings.availablePackages.length === 0) {
         Alert.alert(
-          'Configuration Required',
-          'In-app purchases are not configured yet. Please set up your RevenueCat account and products in App Store Connect.\n\nFor now, use the admin interface to manually upgrade users.'
+          'Unavailable',
+          'In-app purchases are currently unavailable. This may be because:\n\n• You\'re using a simulator (purchases only work on real devices)\n• Products are still being configured in App Store Connect\n\nPlease try again later or contact support.'
         );
         setShowUpgradeModal(false);
         setIsLoading(false);
         return;
       }
 
-      // Get the weekly package (assuming it's the first one)
-      // TODO: Filter by product identifier if you have multiple packages
-      const weeklyPackage = offerings.availablePackages[0];
+      // Get the weekly package
+      const weeklyPackage = offerings.availablePackages.find(
+        pkg => pkg.product.identifier === 'weekly_premium_subscription'
+      ) || offerings.availablePackages[0];
 
       // Make the purchase
       const { customerInfo, error } = await purchasePackage(weeklyPackage);
@@ -365,14 +367,16 @@ export const ProfileScreen = () => {
       }
 
       if (customerInfo) {
-        // Get expiration date from customer info
-        const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + 7); // 1 week from now
+        // Get expiration date from RevenueCat entitlement
+        const premiumEntitlement = customerInfo.entitlements.active['premium'];
+        const expiresAt = premiumEntitlement?.expirationDate
+          ? new Date(premiumEntitlement.expirationDate).toISOString()
+          : null;
 
         // Update user in database
         const updatedUser = await updateUser(currentUser.username, {
           subscription_tier: 'premium',
-          subscription_expires_at: expirationDate.toISOString(),
+          subscription_expires_at: expiresAt,
         });
 
         if (updatedUser) {
@@ -427,8 +431,7 @@ export const ProfileScreen = () => {
     if (!currentUser) return;
 
     if (value) {
-      // Enabling notifications
-      // Request permission first
+      // Enabling notifications - Request permission first
       const token = await registerForPushNotificationsAsync();
 
       if (!token) {
@@ -499,9 +502,9 @@ export const ProfileScreen = () => {
       } else {
         // Revert on error
         setNotificationEnabled(true);
-        const hours = notificationTime.getHours().toString().padStart(2, '0');
-        const minutes = notificationTime.getMinutes().toString().padStart(2, '0');
-        await scheduleDailyReminder(`${hours}:${minutes}`);
+        // TEMPORARILY DISABLED - const hours = notificationTime.getHours().toString().padStart(2, '0');
+        // const minutes = notificationTime.getMinutes().toString().padStart(2, '0');
+        // await scheduleDailyReminder(`${hours}:${minutes}`);
         Alert.alert('Error', 'Failed to update notification settings');
       }
     }
@@ -510,48 +513,46 @@ export const ProfileScreen = () => {
   const handleResumeSession = async () => {
     if (!currentUser) return;
 
+    // Check if there's an active session BEFORE loading
+    // Use the same logic as the hasActiveSession variable
+    const sessionExists = currentUser?.session_status === 'in_progress' ||
+      (correctCount > 0 || incorrectCount > 0 || currentQuestion > 0);
+
+    if (!sessionExists) {
+      Alert.alert('No Session', 'No session in progress to resume.');
+      return;
+    }
+
     // Load session from database
     await loadSession();
 
     // Get fresh values from store after loadSession completes
     const storeState = useQuizStore.getState();
 
-    // Check if there's actually a valid session to resume
-    // A valid session must have:
-    // 1. session_status = 'in_progress' in database
-    // 2. A test_version selected
-    // 3. Not completed
-    const hasSession = storeState.currentUser?.session_status === 'in_progress' &&
-                      storeState.currentUser?.test_version &&
-                      !storeState.currentUser?.completed;
+    // Restore shuffled questions from saved indices
+    const testVersion = storeState.selectedTestVersion || storeState.currentUser?.test_version || '2008';
+    const questions = testVersion === '2025' ? allQuestions2025 : allQuestions;
 
-    if (hasSession) {
-      // Restore shuffled questions from saved indices
-      const questions = storeState.currentUser.test_version === '2025' ? allQuestions2025 : allQuestions;
-
-      // If we have saved shuffle indices, use them to restore the exact order
-      if (storeState.currentUser.shuffled_question_indices &&
-          storeState.currentUser.shuffled_question_indices.length > 0) {
-        const shuffled = storeState.currentUser.shuffled_question_indices.map(index => questions[index]);
-        setShuffledQuestions(shuffled);
-      } else {
-        // Fallback: shuffle fresh (for old sessions before this fix)
-        const shuffled = shuffleArray(questions);
-        setShuffledQuestions(shuffled);
-      }
-
-      // Values already set by loadSession, but ensure they're applied
-      if (storeState.selectedTestVersion) setSelectedTestVersion(storeState.selectedTestVersion);
-      if (storeState.selectedMode) setSelectedMode(storeState.selectedMode);
-      setCurrentQuestion(storeState.currentQuestion);
-
-      // Navigate to quiz screen
-      navigation.navigate('Session' as never, {
-        screen: 'Quiz',
-      } as never);
+    // If we have saved shuffle indices, use them to restore the exact order
+    if (storeState.currentUser?.shuffled_question_indices &&
+        storeState.currentUser.shuffled_question_indices.length > 0) {
+      const shuffled = storeState.currentUser.shuffled_question_indices.map(index => questions[index]);
+      setShuffledQuestions(shuffled);
     } else {
-      Alert.alert('No Session', 'No session in progress to resume.');
+      // Fallback: shuffle fresh (for old sessions before this fix)
+      const shuffled = shuffleArray(questions);
+      setShuffledQuestions(shuffled);
     }
+
+    // Values already set by loadSession, but ensure they're applied
+    if (storeState.selectedTestVersion) setSelectedTestVersion(storeState.selectedTestVersion);
+    if (storeState.selectedMode) setSelectedMode(storeState.selectedMode);
+    setCurrentQuestion(storeState.currentQuestion);
+
+    // Navigate to quiz screen
+    navigation.navigate('Session' as never, {
+      screen: 'Quiz',
+    } as never);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -572,6 +573,33 @@ export const ProfileScreen = () => {
     const year = date.getFullYear();
 
     return `${month} ${day}${suffix}, ${year}`;
+  };
+
+  // Format date as MM/DD/YYYY for Past Sessions table
+  const formatDateShort = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
+  // Format time as HH:MM am/pm
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12 || 12; // Convert to 12-hour format
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
+  // Format date with time for Current Session
+  const formatDateWithTime = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return `${formatDateShort(dateString)} / ${formatTime(dateString)}`;
   };
 
   const getScoreDisplay = () => {
@@ -701,25 +729,18 @@ export const ProfileScreen = () => {
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.username} numberOfLines={1} ellipsizeMode="tail">{currentUser.username}</Text>
-            <Text style={styles.bestScore}>
-              Best Score: {currentUser.best_score || 0}
-            </Text>
+            <View style={styles.subscriptionRow}>
+              <Text style={styles.subscriptionLabel}>Subscription Tier: </Text>
+              <Text style={styles.tierText}>
+                {currentUser.subscription_tier === 'premium' ? 'Premium' : 'Free'}
+              </Text>
+              {currentUser.subscription_tier === 'free' && (
+                <TouchableOpacity onPress={handleUpgradePress}>
+                  <Text style={styles.upgradeLink}>upgrade</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
-
-        {/* Subscription Tier */}
-        <View style={styles.subscriptionRow}>
-          <View style={styles.subscriptionLeft}>
-            <Text style={styles.subscriptionLabel}>Subscription Tier: </Text>
-            <Text style={styles.tierText}>
-              {currentUser.subscription_tier === 'premium' ? 'Premium' : 'Free'}
-            </Text>
-          </View>
-          {currentUser.subscription_tier === 'free' && (
-            <TouchableOpacity onPress={handleUpgradePress}>
-              <Text style={styles.upgradeLink}>upgrade</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </Card>
 
@@ -762,7 +783,7 @@ export const ProfileScreen = () => {
             <View style={styles.sessionRow}>
               <Text style={styles.sessionLabel}>Last Updated:</Text>
               <Text style={styles.sessionValue}>
-                {formatDate(currentUser.last_session_date)}
+                {formatDateWithTime(currentUser.last_session_date)}
               </Text>
             </View>
 
@@ -797,50 +818,54 @@ export const ProfileScreen = () => {
         <Text style={styles.sectionTitle}>Past Sessions</Text>
         <View style={styles.pastSessionsContainer}>
           {pastSessions.length > 0 ? (
-            <View style={styles.pastSessionTable}>
-              {/* Table Header */}
-              <View style={styles.tableRow}>
-                <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>Date</Text>
-                <Text style={[styles.tableHeaderText, { flex: 0.8, textAlign: 'center' }]}>Ver</Text>
-                <Text style={[styles.tableHeaderText, { flex: 0.8, textAlign: 'center' }]}>Mode</Text>
-                <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center' }]}>Score</Text>
-                <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center' }]}>Result</Text>
+            <>
+              <View style={styles.pastSessionTable}>
+                {/* Table Header */}
+                <View style={styles.tableRow}>
+                  <Text style={[styles.tableHeaderText, { flex: 2 }]}>Date / Time</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center' }]}>Score</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center' }]}>Result</Text>
+                </View>
+
+                {/* Table Data Rows - Show only first 5 */}
+                {pastSessions.slice(0, 5).map((session) => {
+                  const maxQuestions = session.test_version === '2025' ? 20 : 10;
+                  const passThreshold = session.test_version === '2025' ? 12 : 6;
+                  const sessionPassed = session.correct_count >= passThreshold;
+
+                  return (
+                    <View key={session.id} style={styles.tableRow}>
+                      <Text style={[styles.tableCellText, { flex: 2 }]} numberOfLines={1}>
+                        {formatDateShort(session.completed_at)} / {formatTime(session.completed_at)}
+                      </Text>
+                      <Text style={[styles.tableCellText, { flex: 1, textAlign: 'center' }]} numberOfLines={1}>
+                        {session.correct_count}/{session.total_questions_asked}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCellText,
+                          { flex: 1, textAlign: 'center', fontWeight: '600' },
+                          { color: sessionPassed ? Colors.correct : Colors.incorrect }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {session.session_status === 'passed' ? 'PASS' : 'FAIL'}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
 
-              {/* Table Data Rows - Map over all sessions */}
-              {pastSessions.map((session) => {
-                const maxQuestions = session.test_version === '2025' ? 20 : 10;
-                const passThreshold = session.test_version === '2025' ? 12 : 6;
-                const sessionPassed = session.correct_count >= passThreshold;
-
-                return (
-                  <View key={session.id} style={styles.tableRow}>
-                    <Text style={[styles.tableCellText, { flex: 1.5 }]} numberOfLines={1}>
-                      {formatDate(session.completed_at)}
-                    </Text>
-                    <Text style={[styles.tableCellText, { flex: 0.8, textAlign: 'center' }]}>
-                      {session.test_version}
-                    </Text>
-                    <Text style={[styles.tableCellText, { flex: 0.8, textAlign: 'center' }]}>
-                      {session.mode === 'formal' ? 'F' : 'C'}
-                    </Text>
-                    <Text style={[styles.tableCellText, { flex: 1, textAlign: 'center' }]} numberOfLines={1}>
-                      {session.correct_count}/{session.total_questions_asked}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.tableCellText,
-                        { flex: 1, textAlign: 'center', fontWeight: '600' },
-                        { color: sessionPassed ? Colors.correct : Colors.incorrect }
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {session.session_status === 'passed' ? 'PASS' : 'FAIL'}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
+              {/* Show "See all Past Sessions" link if there are more than 5 */}
+              {pastSessions.length > 5 && (
+                <TouchableOpacity
+                  style={styles.seeAllLink}
+                  onPress={() => navigation.navigate('PastSessions' as never)}
+                >
+                  <Text style={styles.seeAllText}>See all Past Sessions</Text>
+                </TouchableOpacity>
+              )}
+            </>
           ) : (
             <Text style={styles.noSessionText}>
               You have no past sessions yet.
@@ -1018,22 +1043,10 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
-  bestScore: {
-    fontSize: FontSizes.base,
-    color: Colors.textLight,
-  },
   subscriptionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.background,
-    marginTop: Spacing.sm,
-  },
-  subscriptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: Spacing.xs,
   },
   subscriptionLabel: {
     fontSize: FontSizes.base,
@@ -1049,6 +1062,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     textDecorationLine: 'underline',
     fontWeight: '600',
+    marginLeft: Spacing.xs,
   },
   sectionTitle: {
     fontSize: FontSizes.xl,
@@ -1188,5 +1202,15 @@ const styles = StyleSheet.create({
   timePickerDoneButton: {
     marginTop: Spacing.md,
     marginBottom: Spacing.md,
+  },
+  seeAllLink: {
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  seeAllText: {
+    fontSize: FontSizes.base,
+    color: Colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

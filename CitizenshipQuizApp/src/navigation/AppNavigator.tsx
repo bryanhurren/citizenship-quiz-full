@@ -11,9 +11,9 @@ import {
   QuizScreen,
   ResultsScreen,
   ProfileScreen,
+  PastSessionsScreen,
 } from '../screens';
 import { Colors } from '../constants/theme';
-import { WelcomeModal } from '../components';
 import { useQuizStore } from '../store/quizStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -43,52 +43,34 @@ function SessionStackNavigator() {
 
 // Main Tab Navigator
 function MainTabNavigator() {
-  const currentUser = useQuizStore((state) => state.currentUser);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [hasShownModal, setHasShownModal] = useState(false);
-
-  useEffect(() => {
-    // Show welcome modal on first load if user is not logged in
-    if (!currentUser && !hasShownModal) {
-      setShowWelcomeModal(true);
-      setHasShownModal(true);
-    }
-  }, [currentUser, hasShownModal]);
-
   return (
-    <>
-      <Tab.Navigator
-        initialRouteName="You"
-        screenOptions={{
-          tabBarActiveTintColor: Colors.primary,
-          tabBarInactiveTintColor: Colors.textMuted,
-          headerShown: false,
+    <Tab.Navigator
+      initialRouteName="You"
+      screenOptions={{
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen
+        name="Session"
+        component={SessionStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="clipboard-outline" size={size} color={color} />
+          ),
         }}
-      >
-        <Tab.Screen
-          name="Session"
-          component={SessionStackNavigator}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="clipboard-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="You"
-          component={ProfileScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person-circle-outline" size={size} color={color} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
-      <WelcomeModal
-        visible={showWelcomeModal}
-        onDismiss={() => setShowWelcomeModal(false)}
       />
-    </>
+      <Tab.Screen
+        name="You"
+        component={ProfileScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
@@ -132,14 +114,30 @@ export function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        <RootStack.Screen
-          name="Main"
-          component={MainTabNavigator}
-        />
+      <RootStack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName={currentUser ? 'Main' : 'Login'}
+      >
         <RootStack.Screen
           name="Login"
           component={LoginScreen}
+          options={{
+            animationEnabled: false,
+            gestureEnabled: false,
+          }}
+        />
+        <RootStack.Screen
+          name="Main"
+          component={MainTabNavigator}
+          options={{
+            animationEnabled: false,
+            gestureEnabled: false,
+          }}
+        />
+        <RootStack.Screen
+          name="PastSessions"
+          component={PastSessionsScreen}
+          options={{ headerShown: true, title: 'Past Sessions' }}
         />
       </RootStack.Navigator>
     </NavigationContainer>

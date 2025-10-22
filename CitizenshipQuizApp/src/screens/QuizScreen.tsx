@@ -12,13 +12,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { Badge, TypingIndicator } from '../components';
+import { Badge, TypingIndicator, UpgradeModal } from '../components';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
 import { evaluateAnswer } from '../services/api';
-import { saveSession as saveSessionToDb } from '../services/supabase';
+import { saveSession as saveSessionToDb, updateUser as updateUserInDb } from '../services/supabase';
 import { AnswerGrade, ChatMessage, QuestionResult } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  getOfferings,
+  purchasePackage,
+} from '../services/purchases';
 
 export const QuizScreen = () => {
   const navigation = useNavigation();
@@ -45,21 +49,25 @@ export const QuizScreen = () => {
   const checkDailyLimit = useQuizStore((state) => state.checkDailyLimit);
   const canUserAnswer = useQuizStore((state) => state.canUserAnswer);
   const incrementQuestionCount = useQuizStore((state) => state.incrementQuestionCount);
+  const setCurrentUser = useQuizStore((state) => state.setCurrentUser);
 
   // Local state for chat interface
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
   const [isPartialRetry, setIsPartialRetry] = useState(false);
   const [currentGrade, setCurrentGrade] = useState<AnswerGrade | null>(null);
-  const [totalQuestionsAsked, setTotalQuestionsAsked] = useState(0);
   const [sessionCompleted, setSessionCompleted] = useState(false);
 
   // Quiz configuration based on test version
   const totalQuestionsToAsk = selectedTestVersion === '2025' ? 20 : 10;
   const passThreshold = selectedTestVersion === '2025' ? 12 : 6;
   const failThreshold = selectedTestVersion === '2025' ? 9 : 5;
+
+  // Calculate total questions asked from store (persists across re-renders)
+  const totalQuestionsAsked = correctCount + incorrectCount;
 
   // Get current question
   const question = shuffledQuestions[currentQuestion];
@@ -164,7 +172,7 @@ export const QuizScreen = () => {
           {
             text: 'Upgrade to Premium',
             onPress: () => {
-              Alert.alert('Coming Soon', 'Premium subscription will be available soon!');
+              setShowUpgradeModal(true);
             },
           },
           {
@@ -233,7 +241,7 @@ export const QuizScreen = () => {
           });
         }
         setIsPartialRetry(false);
-        setTotalQuestionsAsked((prev) => prev + 1); // Count as completed question
+        // totalQuestionsAsked will auto-update from correctCount + incorrectCount
       } else {
         // First attempt
         addQuestionResult({
@@ -246,13 +254,13 @@ export const QuizScreen = () => {
 
         if (evaluation.grade === 'correct') {
           incrementCorrect();
-          setTotalQuestionsAsked((prev) => prev + 1);
+          // totalQuestionsAsked will auto-update from correctCount + incorrectCount
         } else if (evaluation.grade === 'partial') {
           // Don't increment question count yet - wait for retry
           // Don't increment correct/incorrect yet either
         } else {
           incrementIncorrect();
-          setTotalQuestionsAsked((prev) => prev + 1);
+          // totalQuestionsAsked will auto-update from correctCount + incorrectCount
         }
 
         // Increment daily question count
@@ -383,6 +391,84 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
     useQuizStore.getState().resetQuiz();
   };
 
+  const handleUpgradeConfirm = async () => {
+    if (!currentUser) return;
+
+    setIsLoading(true);
+
+    try {
+      // Fetch available offerings
+      const offerings = await getOfferings();
+
+      if (!offerings || !offerings.availablePackages || offerings.availablePackages.length === 0) {
+        Alert.alert(
+          'Unavailable',
+          'In-app purchases are currently unavailable. This may be because:\n\n• You\'re using a simulator (purchases only work on real devices)\n• Products are still being configured in App Store Connect\n\nPlease try again later or contact support.'
+        );
+        setShowUpgradeModal(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Find the weekly package
+      const weeklyPackage = offerings.availablePackages.find(
+        pkg => pkg.product.identifier === 'weekly_premium_subscription'
+      ) || offerings.availablePackages[0];
+
+      if (!weeklyPackage) {
+        Alert.alert('Error', 'No subscription packages available.');
+        setShowUpgradeModal(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Make the purchase
+      const { customerInfo } = await purchasePackage(weeklyPackage);
+
+      // Check if user is now premium
+      const premiumEntitlement = customerInfo.entitlements.active['premium'];
+      const isPremium = premiumEntitlement !== undefined;
+
+      if (isPremium && premiumEntitlement) {
+        // Get expiration date from entitlement
+        const expiresAt = premiumEntitlement.expirationDate
+          ? new Date(premiumEntitlement.expirationDate).toISOString()
+          : null;
+
+        // Update user in database
+        await updateUserInDb(currentUser.username, {
+          subscription_tier: 'premium',
+          subscription_expires_at: expiresAt,
+        });
+
+        // Update local state with both tier and expiration
+        setCurrentUser({
+          ...currentUser,
+          subscription_tier: 'premium',
+          subscription_expires_at: expiresAt,
+        });
+
+        Alert.alert('Success!', 'You now have unlimited access to all questions!');
+        setShowUpgradeModal(false);
+      } else {
+        Alert.alert('Error', 'Purchase completed but premium access was not activated. Please contact support.');
+        setShowUpgradeModal(false);
+      }
+    } catch (error: any) {
+      console.error('Purchase error:', error);
+
+      if (error.code === 'PURCHASES_CANCELLED_ERROR') {
+        // User cancelled - just close modal
+        setShowUpgradeModal(false);
+      } else {
+        Alert.alert('Purchase Failed', error.message || 'Please try again.');
+        setShowUpgradeModal(false);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Render a single chat message
   const renderMessage = (message: ChatMessage) => {
     if (message.type === 'welcome') {
@@ -496,6 +582,13 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
           keyboardShouldPersistTaps="handled"
         >
           {messages.map(renderMessage)}
+          {isLoading && (
+            <View style={[styles.messageContainer, styles.questionContainer]}>
+              <View style={styles.messageBubble}>
+                <TypingIndicator />
+              </View>
+            </View>
+          )}
         </ScrollView>
 
         {/* Retry hint for partial answers */}
@@ -539,7 +632,7 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
               disabled={(!userAnswer.trim() && !waitingForNext) || isLoading}
             >
               {isLoading ? (
-                <TypingIndicator />
+                <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
                 <Ionicons
                   name="arrow-forward"
@@ -550,6 +643,13 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Upgrade Modal */}
+        <UpgradeModal
+          visible={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          onUpgrade={handleUpgradeConfirm}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

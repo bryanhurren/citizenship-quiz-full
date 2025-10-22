@@ -14,11 +14,13 @@ import { Colors, Spacing, FontSizes } from '../constants/theme';
 interface WelcomeModalProps {
   visible: boolean;
   onDismiss: () => void;
+  isNewUser?: boolean;
 }
 
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   visible,
   onDismiss,
+  isNewUser = false,
 }) => {
   return (
     <Modal
@@ -34,12 +36,24 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>Welcome to AI Citizenship Quiz</Text>
+          <Text style={styles.title}>
+            {isNewUser ? 'Welcome to AI Citizenship Quiz!' : 'Welcome Back!'}
+          </Text>
           <Text style={styles.message}>
-            Login or Create New Account to Proceed
+            {isNewUser ? (
+              <>
+                Prepare for your US Citizenship civics test with AI-powered feedback!{'\n\n'}
+                Choose your test version (2008 or 2025) and quiz mode (Formal or Comedy).{'\n\n'}
+                Let's get started!
+              </>
+            ) : (
+              'Ready to continue your citizenship journey? Your progress has been saved.'
+            )}
           </Text>
           <TouchableOpacity style={styles.button} onPress={onDismiss}>
-            <Text style={styles.buttonText}>Got it</Text>
+            <Text style={styles.buttonText}>
+              {isNewUser ? "Let's Begin" : 'Continue'}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

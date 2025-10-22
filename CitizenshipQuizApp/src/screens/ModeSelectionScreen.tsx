@@ -8,12 +8,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Button, ModeOptionCard } from '../components';
+import { Button, ModeOptionCard, WelcomeModal } from '../components';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
 import { TestVersion, QuizMode, Question } from '../types';
 import { allQuestions } from '../data/questions';
 import { allQuestions2025 } from '../data/questions-2025';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -38,6 +39,20 @@ export const ModeSelectionScreen = () => {
   const [testVersion, setTestVersion] = useState<TestVersion | null>(null);
   const [mode, setMode] = useState<QuizMode | null>(null);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
+  // Check for new user flag and show welcome modal
+  React.useEffect(() => {
+    const checkNewUser = async () => {
+      const isNewUser = await AsyncStorage.getItem('isNewUser');
+      if (isNewUser === 'true') {
+        setShowWelcomeModal(true);
+        // Clear the flag so it only shows once
+        await AsyncStorage.removeItem('isNewUser');
+      }
+    };
+    checkNewUser();
+  }, []);
 
   // Check for in-progress session on mount
   React.useEffect(() => {
@@ -243,6 +258,13 @@ export const ModeSelectionScreen = () => {
           : 'Ready to start! Tap the button above.'}
       </Text>
     </ScrollView>
+
+    {/* Welcome Modal for new users */}
+    <WelcomeModal
+      visible={showWelcomeModal}
+      onDismiss={() => setShowWelcomeModal(false)}
+      isNewUser={true}
+    />
   </SafeAreaView>
   );
 };
