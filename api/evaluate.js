@@ -120,12 +120,17 @@ Respond ONLY with valid JSON, no other text.`
             let evaluation;
             try {
                 evaluation = JSON.parse(responseText);
+
+                // Normalize grade to lowercase (Claude sometimes returns "Correct" instead of "correct")
+                if (evaluation.grade) {
+                    evaluation.grade = evaluation.grade.toLowerCase();
+                }
             } catch (e) {
                 console.error('Failed to parse JSON:', responseText);
                 // Fallback if AI doesn't return proper JSON
                 evaluation = {
-                    correct: responseText.toUpperCase().includes('YES') || responseText.toUpperCase().includes('"correct": true'),
-                    feedback: responseText
+                    grade: 'incorrect',
+                    feedback: responseText || 'Unable to evaluate answer. Please try again.'
                 };
             }
 
