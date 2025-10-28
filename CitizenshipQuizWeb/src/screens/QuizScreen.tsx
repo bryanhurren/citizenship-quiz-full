@@ -187,6 +187,16 @@ export const QuizScreen = () => {
 
   // Check for pass/fail conditions - returns status if session should end
   const checkSessionStatus = () => {
+    // FOCUSED MODE: Complete when all shuffled questions are answered
+    if (studyMode === 'focused') {
+      if (totalQuestionsAsked >= shuffledQuestions.length) {
+        console.log('✅ FOCUSED MODE COMPLETE: answered all questions');
+        return 'passed'; // Focused mode doesn't have pass/fail, just completion
+      }
+      return null;
+    }
+
+    // RANDOM MODE: Standard pass/fail logic
     // Early PASS - reached pass threshold
     if (correctCount >= passThreshold) {
       return 'passed';
