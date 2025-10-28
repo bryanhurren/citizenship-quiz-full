@@ -453,6 +453,14 @@ export const QuizScreen = () => {
     const capturedShuffledQuestionsLength = shuffledQuestions.length;
     const capturedSelectedTestVersion = selectedTestVersion;
 
+    console.log('🔍 CAPTURED VALUES:', {
+      capturedStudyMode,
+      capturedCorrectCount,
+      capturedIncorrectCount,
+      capturedShuffledQuestionsLength,
+      capturedSelectedTestVersion
+    });
+
     setSessionCompleted(true);
 
     // Save session to database FIRST, before navigation
@@ -497,18 +505,26 @@ export const QuizScreen = () => {
     }
 
     // Check if this is a focused mode session (use captured value)
+    console.log('🔍 CHECKING FOCUSED MODE:', {
+      capturedStudyMode,
+      isFocused: capturedStudyMode === 'focused',
+      hasUser: !!currentUser,
+      hasTestVersion: !!capturedSelectedTestVersion
+    });
+
     if (capturedStudyMode === 'focused' && currentUser && capturedSelectedTestVersion) {
-      console.log('✓ Navigating to FocusedModeComplete screen');
+      const navParams = {
+        previousIncorrect: capturedShuffledQuestionsLength,
+        nowCorrect: capturedCorrectCount,
+        stillIncorrect: capturedIncorrectCount,
+        previousAccuracy: 0,
+        newAccuracy: capturedCorrectCount > 0 ? (capturedCorrectCount / (capturedCorrectCount + capturedIncorrectCount)) * 100 : 0,
+        testVersion: capturedSelectedTestVersion,
+      };
+      console.log('✓ NAVIGATING TO FocusedModeComplete with params:', navParams);
       try {
-        // Navigate to FocusedModeComplete screen with stats
-        navigation.navigate('FocusedModeComplete' as never, {
-          previousIncorrect: capturedShuffledQuestionsLength,
-          nowCorrect: capturedCorrectCount,
-          stillIncorrect: capturedIncorrectCount,
-          previousAccuracy: 0,
-          newAccuracy: capturedCorrectCount > 0 ? (capturedCorrectCount / (capturedCorrectCount + capturedIncorrectCount)) * 100 : 0,
-          testVersion: capturedSelectedTestVersion,
-        } as never);
+        navigation.navigate('FocusedModeComplete' as never, navParams as never);
+        console.log('✅ Navigation.navigate() called successfully');
         return;
       } catch (error) {
         console.error('❌ Error navigating to focused mode complete:', error);

@@ -6,7 +6,15 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && echo '✓ Type check passed'",
+    "ios:device": "npx expo run:ios --device 00008110-001C5500112A801E",
+    "ios:clean": "rm -rf ios/build && rm -rf ~/Library/Developer/Xcode/DerivedData/AICitizenQuiz-* && npm run ios:device",
+    "ios:deep-clean": "watchman watch-del-all && rm -rf $TMPDIR/metro-* && rm -rf $TMPDIR/haste-map-* && rm -rf ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex && npm run ios:clean",
+    "build:pre-check": "./scripts/pre-build.sh",
+    "build:monitor": "./scripts/monitor-build.sh",
+    "cache:clear": "watchman watch-del-all && rm -rf $TMPDIR/metro-* && rm -rf $TMPDIR/haste-map-* && rm -rf node_modules/.cache"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -22,8 +30,8 @@
     "expo-crypto": "~15.0.7",
     "expo-notifications": "~0.32.12",
     "expo-status-bar": "~3.0.8",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-native": "0.81.4",
     "react-native-purchases": "^9.5.4",
     "react-native-safe-area-context": "~5.6.0",
@@ -32,7 +40,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/react": "~19.1.0",
+    "@types/react": "^19.1.10",
     "babel-preset-expo": "^54.0.5",
     "typescript": "~5.9.2"
   },

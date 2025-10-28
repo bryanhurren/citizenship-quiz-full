@@ -16,6 +16,7 @@ import { Colors, Spacing, FontSizes } from '../constants/theme';
 import { useQuizStore, storeLoggedInUser } from '../store/quizStore';
 import {
   getUser,
+  getUserByAppleId,
   createUser,
   validateInviteCode,
   markInviteCodeAsUsed,
@@ -26,6 +27,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync, scheduleDailyReminder } from '../services/notifications';
+import { setHasCreatedAccount } from '../services/guestMode';
 
 export const LoginScreen = () => {
   const navigation = useNavigation();
@@ -41,8 +43,14 @@ export const LoginScreen = () => {
     provider: 'apple' | 'google';
   } | null>(null);
 
+  // Welcome modal state
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
+
   // Error state
   const [error, setError] = useState('');
+
+  // No initial navigation needed - AppNavigator handles routing
 
   // Helper function to request notification permissions after account creation
   const requestNotificationPermissionsForNewUser = async (userId: number) => {
@@ -60,6 +68,22 @@ export const LoginScreen = () => {
     }
   };
 
+  // Handle welcome modal dismiss
+  const handleWelcomeModalDismiss = () => {
+    setShowWelcomeModal(false);
+
+    if (isNewUser) {
+      // New user - navigate to Mode Selection
+      navigation.navigate('Main' as never, {
+        screen: 'Session',
+        params: { screen: 'ModeSelection' },
+      } as never);
+    } else {
+      // Existing user - navigate to You tab
+      navigation.navigate('Main' as never);
+    }
+  };
+
   const handleAppleSignIn = async () => {
     setError('');
     setIsLoading(true);
@@ -72,26 +96,54 @@ export const LoginScreen = () => {
         ],
       });
 
-      // Extract user info from Apple credential
-      const email = credential.email || `${credential.user}@privaterelay.appleid.com`;
-      const name = credential.fullName?.givenName || 'User';
-      // Note: Apple Sign-In doesn't provide profile pictures
+      // Extract stable Apple user identifier
+      const appleUserId = credential.user;
 
-      // Check if user already exists
-      const existingUser = await getUser(email);
+      // Extract email (only provided on first sign-in)
+      const email = credential.email || `${appleUserId}@privaterelay.appleid.com`;
+      const name = credential.fullName?.givenName || 'User';
+
+      console.log('Apple Sign-In - Apple User ID:', appleUserId);
+      console.log('Apple Sign-In - Email:', email);
+      console.log('Apple Sign-In - Email provided by Apple:', !!credential.email);
+
+      // Try to find user by Apple user ID first (best practice)
+      let existingUser = await getUserByAppleId(appleUserId);
+      console.log('Found by Apple ID:', !!existingUser);
+
+      // Fallback: Look up by email for backwards compatibility with existing users
+      if (!existingUser && email) {
+        existingUser = await getUser(email);
+        console.log('Found by email:', !!existingUser);
+
+        // If found by email, update their record with apple_user_id
+        if (existingUser) {
+          console.log('Updating existing user with Apple ID...');
+          const updated = await updateUserInDb(existingUser.username, {
+            apple_user_id: appleUserId
+          });
+          if (updated) {
+            console.log('Successfully updated user with Apple ID');
+            existingUser = updated;
+          } else {
+            console.error('Failed to update user with Apple ID');
+          }
+        }
+      }
 
       if (existingUser) {
         // Existing user - log them in
         await storeLoggedInUser(email);
         setCurrentUser(existingUser);
-        // Navigate to Main - You tab
-        navigation.navigate('Main' as never);
+        setIsNewUser(false);
+        setShowWelcomeModal(true);
       } else {
-        // New user - auto-create account and go to Mode Selection
+        // New user - create account
         const newUser = await createUser({
           username: email,
-          password: '', // No password for OAuth users
-          invite_code: 'OAUTH-AUTO', // Auto-created OAuth users
+          password: '',
+          apple_user_id: appleUserId, // Store Apple user ID
+          invite_code: 'OAUTH-AUTO',
           current_question: 0,
           correct_count: 0,
           partial_count: 0,
@@ -100,35 +152,25 @@ export const LoginScreen = () => {
           completed: false,
           best_score: 0,
           last_session_date: null,
-          notification_enabled: true, // Default to ON for new users
-          notification_time: '09:00', // Default to 9 AM
-          profile_picture: null, // Apple doesn't provide profile pictures
+          notification_enabled: true,
+          notification_time: '09:00',
+          profile_picture: null,
         });
 
         if (newUser) {
-          // Auto-login
           await storeLoggedInUser(email);
-
-          // Store flag that this is a new user for Mode Selection screen
+          await setHasCreatedAccount();
           await AsyncStorage.setItem('isNewUser', 'true');
-
           setCurrentUser(newUser);
-
-          // Request notification permissions for new users
           await requestNotificationPermissionsForNewUser(newUser.id);
-
-          // Navigate to Main tab navigator, opening the Session tab with Mode Selection
-          navigation.navigate('Main' as never, {
-            screen: 'Session',
-            params: { screen: 'ModeSelection' },
-          } as never);
+          setIsNewUser(true);
+          setShowWelcomeModal(true);
         } else {
           setError('Error creating account');
         }
       }
     } catch (error: any) {
       if (error.code === 'ERR_CANCELED') {
-        // User canceled the sign-in
         setError('Sign in canceled');
       } else {
         setError('Error signing in with Apple. Please try again.');
@@ -169,13 +211,14 @@ export const LoginScreen = () => {
         // Existing user - log them in
         // Update profile picture if it's new or different
         if (photo && existingUser.profile_picture !== photo) {
-          await updateUserInDb(existingUser.id, { profile_picture: photo });
+          await updateUserInDb(existingUser.username, { profile_picture: photo });
           existingUser.profile_picture = photo;
         }
         await storeLoggedInUser(email);
         setCurrentUser(existingUser);
-        // Navigate to Main - You tab
-        navigation.navigate('Main' as never);
+        // Show welcome back modal
+        setIsNewUser(false);
+        setShowWelcomeModal(true);
       } else {
         // New user - auto-create account and go to Mode Selection
         const newUser = await createUser({
@@ -199,6 +242,9 @@ export const LoginScreen = () => {
           // Auto-login
           await storeLoggedInUser(email);
 
+          // Mark that user has created an account (persistent flag)
+          await setHasCreatedAccount();
+
           // Store flag that this is a new user for Mode Selection screen
           await AsyncStorage.setItem('isNewUser', 'true');
 
@@ -207,11 +253,9 @@ export const LoginScreen = () => {
           // Request notification permissions for new users
           await requestNotificationPermissionsForNewUser(newUser.id);
 
-          // Navigate to Main tab navigator, opening the Session tab with Mode Selection
-          navigation.navigate('Main' as never, {
-            screen: 'Session',
-            params: { screen: 'ModeSelection' },
-          } as never);
+          // Show welcome modal for new user
+          setIsNewUser(true);
+          setShowWelcomeModal(true);
         } else {
           setError('Error creating account');
         }
@@ -387,6 +431,13 @@ export const LoginScreen = () => {
           />
         </View>
       </View>
+
+      {/* Welcome Modal */}
+      <WelcomeModal
+        visible={showWelcomeModal}
+        onDismiss={handleWelcomeModalDismiss}
+        isNewUser={isNewUser}
+      />
   </SafeAreaView>
   );
 };

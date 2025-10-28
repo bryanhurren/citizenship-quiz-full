@@ -9,20 +9,37 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { Badge, TypingIndicator, UpgradeModal } from '../components';
+import { Badge, TypingIndicator, UpgradeModal, SignUpPrompt } from '../components';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
+import { incrementGuestQuestionCount, getGuestQuestionCount } from '../services/guestMode';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { evaluateAnswer } from '../services/api';
-import { saveSession as saveSessionToDb, updateUser as updateUserInDb } from '../services/supabase';
-import { AnswerGrade, ChatMessage, QuestionResult } from '../types';
+import {
+  saveSession as saveSessionToDb,
+  updateUser as updateUserInDb,
+  getUser,
+  createUser,
+  updateQuestionProgress,
+  getProgressStats,
+} from '../services/supabase';
+import { AnswerGrade, ChatMessage, QuestionResult, Question } from '../types';
+import { storeLoggedInUser } from '../store/quizStore';
+import { setHasCreatedAccount } from '../services/guestMode';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerForPushNotificationsAsync, scheduleDailyReminder } from '../services/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import {
   getOfferings,
   purchasePackage,
 } from '../services/purchases';
+import { allQuestions } from '../data/questions';
+import { allQuestions2025 } from '../data/questions-2025';
 
 export const QuizScreen = () => {
   const navigation = useNavigation();
@@ -34,6 +51,7 @@ export const QuizScreen = () => {
   const currentUser = useQuizStore((state) => state.currentUser);
   const selectedMode = useQuizStore((state) => state.selectedMode);
   const selectedTestVersion = useQuizStore((state) => state.selectedTestVersion);
+  const studyMode = useQuizStore((state) => state.studyMode);
   const shuffledQuestions = useQuizStore((state) => state.shuffledQuestions);
   const currentQuestion = useQuizStore((state) => state.currentQuestion);
   const correctCount = useQuizStore((state) => state.correctCount);
@@ -50,10 +68,13 @@ export const QuizScreen = () => {
   const canUserAnswer = useQuizStore((state) => state.canUserAnswer);
   const incrementQuestionCount = useQuizStore((state) => state.incrementQuestionCount);
   const setCurrentUser = useQuizStore((state) => state.setCurrentUser);
+  const isGuest = useQuizStore((state) => state.isGuest);
 
   // Local state for chat interface
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isNewUserUpgrade, setIsNewUserUpgrade] = useState(false);
+  const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
@@ -71,6 +92,12 @@ export const QuizScreen = () => {
 
   // Get current question
   const question = shuffledQuestions[currentQuestion];
+
+  // Helper to get original question index from source array
+  const getQuestionIndex = (question: Question): number => {
+    const sourceQuestions = selectedTestVersion === '2025' ? allQuestions2025 : allQuestions;
+    return sourceQuestions.findIndex(q => q.q === question.q);
+  };
 
   // Check if user is logged in
   useEffect(() => {
@@ -135,8 +162,169 @@ export const QuizScreen = () => {
     }
   }, [isFocused]);
 
+  // Handle Apple Sign-In from guest prompt
+  const handleAppleSignInFromPrompt = async () => {
+    setShowSignUpPrompt(false);
+    setIsLoading(true);
+
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const email = credential.email || `${credential.user}@privaterelay.appleid.com`;
+      const name = credential.fullName?.givenName || 'User';
+
+      // Check if user already exists
+      const existingUser = await getUser(email);
+
+      if (existingUser) {
+        // Existing user - log them in
+        await storeLoggedInUser(email);
+        setCurrentUser(existingUser);
+        Alert.alert('Welcome Back!', 'You have been signed in successfully.');
+      } else {
+        // New user - create account
+        const newUser = await createUser({
+          username: email,
+          password: '',
+          invite_code: 'OAUTH-AUTO',
+          current_question: 0,
+          correct_count: 0,
+          partial_count: 0,
+          incorrect_count: 0,
+          question_results: [],
+          completed: false,
+          best_score: 0,
+          last_session_date: null,
+          notification_enabled: true,
+          notification_time: '09:00',
+          profile_picture: null,
+        });
+
+        if (newUser) {
+          await storeLoggedInUser(email);
+          await setHasCreatedAccount();
+          setCurrentUser(newUser);
+
+          // Request notification permissions
+          try {
+            const token = await registerForPushNotificationsAsync();
+            if (token) {
+              await scheduleDailyReminder('09:00');
+            }
+          } catch (error) {
+            console.error('Error requesting notification permissions:', error);
+          }
+
+          // Show premium upsell for new users
+          setIsNewUserUpgrade(true);
+          setShowUpgradeModal(true);
+        }
+      }
+    } catch (error: any) {
+      if (error.code !== 'ERR_CANCELED') {
+        Alert.alert('Sign In Error', 'Failed to sign in with Apple. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle Google Sign-In from guest prompt
+  const handleGoogleSignInFromPrompt = async () => {
+    setShowSignUpPrompt(false);
+    setIsLoading(true);
+
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+
+      const data = response.data || response;
+      const user = data.user || data;
+
+      const email = user?.email || data?.email;
+      const name = user?.givenName || user?.name || data?.givenName || data?.name || 'User';
+      const photo = user?.photo || data?.photo || null;
+
+      if (!email) {
+        throw new Error('No email received from Google Sign-In');
+      }
+
+      // Check if user already exists
+      const existingUser = await getUser(email);
+
+      if (existingUser) {
+        // Existing user - log them in
+        if (photo && existingUser.profile_picture !== photo) {
+          await updateUserInDb(existingUser.username, { profile_picture: photo });
+          existingUser.profile_picture = photo;
+        }
+        await storeLoggedInUser(email);
+        setCurrentUser(existingUser);
+        Alert.alert('Welcome Back!', 'You have been signed in successfully.');
+      } else {
+        // New user - create account
+        const newUser = await createUser({
+          username: email,
+          password: '',
+          invite_code: 'OAUTH-AUTO',
+          current_question: 0,
+          correct_count: 0,
+          partial_count: 0,
+          incorrect_count: 0,
+          question_results: [],
+          completed: false,
+          best_score: 0,
+          last_session_date: null,
+          notification_enabled: true,
+          notification_time: '09:00',
+          profile_picture: photo,
+        });
+
+        if (newUser) {
+          await storeLoggedInUser(email);
+          await setHasCreatedAccount();
+          setCurrentUser(newUser);
+
+          // Request notification permissions
+          try {
+            const token = await registerForPushNotificationsAsync();
+            if (token) {
+              await scheduleDailyReminder('09:00');
+            }
+          } catch (error) {
+            console.error('Error requesting notification permissions:', error);
+          }
+
+          // Show premium upsell for new users
+          setIsNewUserUpgrade(true);
+          setShowUpgradeModal(true);
+        }
+      }
+    } catch (error: any) {
+      if (error.code !== '-5' && error.code !== 'SIGN_IN_CANCELLED') {
+        Alert.alert('Sign In Error', error.message || 'Failed to sign in with Google. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Check for pass/fail conditions - returns status if session should end
   const checkSessionStatus = () => {
+    // FOCUSED MODE: Session complete when all questions answered
+    if (studyMode === 'focused') {
+      if (totalQuestionsAsked >= shuffledQuestions.length) {
+        return 'passed'; // Focused mode always "passes" (just practice)
+      }
+      return null; // Session continues
+    }
+
+    // RANDOM MODE: Standard pass/fail logic
     // Early PASS - reached pass threshold
     if (correctCount >= passThreshold) {
       return 'passed';
@@ -163,15 +351,26 @@ export const QuizScreen = () => {
       return;
     }
 
+    // Check guest daily limit STRICTLY (only on first answer, not retry)
+    if (!isPartialRetry && isGuest()) {
+      const { canAnswer } = await getGuestQuestionCount();
+      if (!canAnswer) {
+        // Guest has reached daily limit - show sign up prompt and prevent submission
+        setShowSignUpPrompt(true);
+        return;
+      }
+    }
+
     // Check daily limit for free users (only on first answer, not retry)
     if (!isPartialRetry && !canUserAnswer()) {
       Alert.alert(
         'Daily Limit Reached',
-        'You have reached your daily limit of 5 questions. Upgrade to Premium for unlimited access at $1/week.',
+        'You have reached your daily limit of 5 questions. Upgrade to Premium for unlimited access at $0.99/week.',
         [
           {
             text: 'Upgrade to Premium',
             onPress: () => {
+              setIsNewUserUpgrade(false);
               setShowUpgradeModal(true);
             },
           },
@@ -232,6 +431,24 @@ export const QuizScreen = () => {
             grade: 'correct',
             feedback: evaluation.feedback,
           });
+
+          // Update question progress in database
+          if (currentUser && currentUser !== 'guest' && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'correct',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+              // Don't block UI - progress tracking is non-critical
+            }
+          }
         } else {
           incrementIncorrect();
           updateLastQuestionResult({
@@ -239,6 +456,24 @@ export const QuizScreen = () => {
             grade: 'incorrect',
             feedback: evaluation.feedback,
           });
+
+          // Update question progress in database
+          if (currentUser && currentUser !== 'guest' && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'incorrect',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+              // Don't block UI - progress tracking is non-critical
+            }
+          }
         }
         setIsPartialRetry(false);
         // totalQuestionsAsked will auto-update from correctCount + incorrectCount
@@ -255,16 +490,62 @@ export const QuizScreen = () => {
         if (evaluation.grade === 'correct') {
           incrementCorrect();
           // totalQuestionsAsked will auto-update from correctCount + incorrectCount
+
+          // Update question progress in database
+          if (currentUser && currentUser !== 'guest' && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'correct',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+              // Don't block UI - progress tracking is non-critical
+            }
+          }
         } else if (evaluation.grade === 'partial') {
           // Don't increment question count yet - wait for retry
           // Don't increment correct/incorrect yet either
         } else {
           incrementIncorrect();
           // totalQuestionsAsked will auto-update from correctCount + incorrectCount
+
+          // Update question progress in database
+          if (currentUser && currentUser !== 'guest' && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'incorrect',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+              // Don't block UI - progress tracking is non-critical
+            }
+          }
         }
 
-        // Increment daily question count
-        await incrementQuestionCount();
+        // Increment daily question count (for logged-in users)
+        if (!isGuest()) {
+          await incrementQuestionCount();
+        } else {
+          // Guest mode - increment guest question count
+          const { count, reachedLimit } = await incrementGuestQuestionCount();
+
+          // Show sign-up prompt when guest reaches limit (but allow them to continue)
+          if (reachedLimit) {
+            setShowSignUpPrompt(true);
+          }
+        }
       }
 
       // Save session after each answer
@@ -330,6 +611,70 @@ export const QuizScreen = () => {
   const handleSessionComplete = async (status: 'passed' | 'failed') => {
     setSessionCompleted(true);
 
+    // Create brief completion message for focused mode
+    const completionMessage: ChatMessage = {
+      id: 'completion',
+      type: 'feedback',
+      content: `Focused practice complete! You answered ${correctCount} correctly and ${incorrectCount} incorrectly.`,
+      grade: 'correct',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, completionMessage]);
+
+    // Check if this is a focused mode session
+    if (studyMode === 'focused' && currentUser && currentUser !== 'guest' && selectedTestVersion) {
+      // Save session to database before navigating
+      const sessionData = {
+        user_id: currentUser.id,
+        test_version: selectedTestVersion,
+        mode: selectedMode || 'focused',
+        correct_count: correctCount,
+        incorrect_count: incorrectCount,
+        total_questions_asked: totalQuestionsAsked,
+        session_status: status,
+        completed_at: new Date().toISOString(),
+        question_results: useQuizStore.getState().questionResults,
+      };
+
+      await saveSessionToDb(sessionData);
+
+      // Update user record - clear session_status
+      await updateUser({
+        session_status: null, // Clear session status
+        best_score: Math.max(currentUser.best_score || 0, correctCount),
+        last_session_date: new Date().toISOString(),
+        completed: true,
+        current_question: 0,
+        correct_count: 0,
+        partial_count: 0,
+        incorrect_count: 0,
+        question_results: [],
+      });
+
+      // Reset in-memory quiz state
+      useQuizStore.getState().resetQuiz();
+
+      // Navigate to focused mode complete screen
+      console.log('Navigating to FocusedModeComplete with params:', {
+        previousIncorrect: shuffledQuestions.length,
+        nowCorrect: correctCount,
+        stillIncorrect: incorrectCount,
+        previousAccuracy: 0,
+        newAccuracy: correctCount > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0,
+        testVersion: selectedTestVersion,
+      });
+
+      navigation.navigate('FocusedModeComplete' as never, {
+        previousIncorrect: shuffledQuestions.length,
+        nowCorrect: correctCount,
+        stillIncorrect: incorrectCount,
+        previousAccuracy: 0,
+        newAccuracy: correctCount > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0,
+        testVersion: selectedTestVersion,
+      } as never);
+      return;
+    }
+
     // Get incorrect questions for summary
     const incorrectQuestions = useQuizStore.getState().questionResults.filter(
       (r) => r.grade === 'incorrect'
@@ -356,8 +701,8 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
 
     setMessages((prev) => [...prev, summaryMessage]);
 
-    // Save session to database
-    if (currentUser && selectedTestVersion && selectedMode) {
+    // Save session to database (skip for guests)
+    if (currentUser && currentUser !== 'guest' && selectedTestVersion && selectedMode) {
       const sessionData = {
         user_id: currentUser.id,
         test_version: selectedTestVersion,
@@ -392,7 +737,11 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
   };
 
   const handleUpgradeConfirm = async () => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser === 'guest') {
+      Alert.alert('Error', 'You must be logged in to upgrade. Please create an account first.');
+      setShowUpgradeModal(false);
+      return;
+    }
 
     setIsLoading(true);
 
@@ -423,7 +772,14 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
       }
 
       // Make the purchase
-      const { customerInfo } = await purchasePackage(weeklyPackage);
+      const { customerInfo, error } = await purchasePackage(weeklyPackage);
+
+      if (error || !customerInfo) {
+        Alert.alert('Purchase Failed', error?.message || 'Unable to complete purchase. Please try again.');
+        setShowUpgradeModal(false);
+        setIsLoading(false);
+        return;
+      }
 
       // Check if user is now premium
       const premiumEntitlement = customerInfo.entitlements.active['premium'];
@@ -431,9 +787,17 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
 
       if (isPremium && premiumEntitlement) {
         // Get expiration date from entitlement
-        const expiresAt = premiumEntitlement.expirationDate
-          ? new Date(premiumEntitlement.expirationDate).toISOString()
-          : null;
+        // Default to +7 days if RevenueCat doesn't provide one
+        let expiresAt: string;
+
+        if (premiumEntitlement.expirationDate) {
+          expiresAt = new Date(premiumEntitlement.expirationDate).toISOString();
+        } else {
+          // Fallback: Set expiration to 7 days from now
+          const defaultExpiration = new Date();
+          defaultExpiration.setDate(defaultExpiration.getDate() + 7);
+          expiresAt = defaultExpiration.toISOString();
+        }
 
         // Update user in database
         await updateUserInDb(currentUser.username, {
@@ -584,7 +948,7 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
           {messages.map(renderMessage)}
           {isLoading && (
             <View style={[styles.messageContainer, styles.questionContainer]}>
-              <View style={styles.messageBubble}>
+              <View style={[styles.messageBubble, styles.typingBubble]}>
                 <TypingIndicator />
               </View>
             </View>
@@ -649,6 +1013,15 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
           visible={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           onUpgrade={handleUpgradeConfirm}
+          title={isNewUserUpgrade ? 'Get unlimited questions for just $0.99 per week!' : 'Upgrade to Premium'}
+        />
+
+        {/* Sign Up Prompt for Guests */}
+        <SignUpPrompt
+          visible={showSignUpPrompt}
+          onDismiss={() => setShowSignUpPrompt(false)}
+          onAppleSignIn={handleAppleSignInFromPrompt}
+          onGoogleSignIn={handleGoogleSignInFromPrompt}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -731,6 +1104,9 @@ const styles = StyleSheet.create({
   },
   userMessageBubble: {
     backgroundColor: Colors.primary,
+  },
+  typingBubble: {
+    backgroundColor: '#22c55e', // Green bubble for typing indicator
   },
   questionText: {
     fontSize: FontSizes.base,

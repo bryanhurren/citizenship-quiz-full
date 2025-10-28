@@ -28,6 +28,27 @@ export const getUser = async (username: string): Promise<User | null> => {
   }
 };
 
+// Get user by Apple user ID (stable identifier across sessions)
+export const getUserByAppleId = async (appleUserId: string): Promise<User | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('apple_user_id', appleUserId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error getting user by Apple ID:', error);
+      return null;
+    }
+
+    return data as User;
+  } catch (error) {
+    console.error('Error getting user by Apple ID:', error);
+    return null;
+  }
+};
+
 export const updateUser = async (username: string, updates: Partial<User>): Promise<User | null> => {
   try {
     const { data, error } = await supabase
@@ -66,6 +87,25 @@ export const createUser = async (user: Partial<User>): Promise<User | null> => {
   } catch (error) {
     console.error('Error creating user:', error);
     return null;
+  }
+};
+
+export const deleteUser = async (username: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('username', username);
+
+    if (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return false;
   }
 };
 
@@ -115,16 +155,17 @@ export const checkAndResetDailyLimit = async (user: User): Promise<User> => {
 };
 
 export const canAnswerQuestion = (user: User): boolean => {
-  // Premium users can always answer
+  // Premium users can answer if subscription hasn't expired
   if (user.subscription_tier === 'premium') {
     // Check if subscription is still valid
-    if (user.subscription_expires_at) {
-      const expiresAt = new Date(user.subscription_expires_at);
-      const now = new Date();
-      if (expiresAt > now) {
-        return true;
-      }
+    if (!user.subscription_expires_at) {
+      // Legacy fallback: If no expiration date, deny access and log error
+      console.error('⚠️ Premium user missing expiration date:', user.username);
+      return false;
     }
+    const expiresAt = new Date(user.subscription_expires_at);
+    const now = new Date();
+    return expiresAt > now;
   }
 
   // Free users have 5 questions per day limit
@@ -187,5 +228,135 @@ export const getUserSessions = async (userId: string): Promise<Session[]> => {
   } catch (error) {
     console.error('Error getting user sessions:', error);
     return [];
+  }
+};
+
+/**
+ * Update question progress tracking after user answers a question
+ */
+export const updateQuestionProgress = async (
+  username: string,
+  questionIndex: number,
+  grade: 'correct' | 'partial' | 'incorrect',
+  testVersion: '2008' | '2025'
+): Promise<void> => {
+  try {
+    const askedField = testVersion === '2025' ? 'questions_asked_2025' : 'questions_asked_2008';
+    const correctField = testVersion === '2025' ? 'questions_correct_2025' : 'questions_correct_2008';
+
+    // Get current user data
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select(`${askedField}, ${correctField}`)
+      .eq('username', username)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const asked = user[askedField] || [];
+    const correct = user[correctField] || [];
+
+    // Add to asked array if not already there
+    let updatedAsked = asked;
+    if (!asked.includes(questionIndex)) {
+      updatedAsked = [...asked, questionIndex];
+    }
+
+    // Update correctness
+    let updatedCorrect = correct;
+    if (grade === 'correct') {
+      // Add to correct if not already there
+      if (!correct.includes(questionIndex)) {
+        updatedCorrect = [...correct, questionIndex];
+      }
+    } else {
+      // Remove from correct if it was there (user got it wrong this time)
+      updatedCorrect = correct.filter(idx => idx !== questionIndex);
+    }
+
+    // Update database
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        [askedField]: updatedAsked,
+        [correctField]: updatedCorrect,
+      })
+      .eq('username', username);
+
+    if (updateError) throw updateError;
+  } catch (error) {
+    console.error('Error updating question progress:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get progress statistics for a specific test version
+ */
+export const getProgressStats = async (
+  username: string,
+  testVersion: '2008' | '2025'
+): Promise<{
+  totalAsked: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  incorrectIndices: number[];
+  percentageCorrect: number;
+  totalQuestions: number;
+}> => {
+  try {
+    const askedField = testVersion === '2025' ? 'questions_asked_2025' : 'questions_asked_2008';
+    const correctField = testVersion === '2025' ? 'questions_correct_2025' : 'questions_correct_2008';
+    const totalQuestions = testVersion === '2025' ? 128 : 100;
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select(`${askedField}, ${correctField}`)
+      .eq('username', username)
+      .single();
+
+    if (error) throw error;
+
+    const asked = user[askedField] || [];
+    const correct = user[correctField] || [];
+    const incorrect = asked.filter(idx => !correct.includes(idx));
+
+    return {
+      totalAsked: asked.length,
+      totalCorrect: correct.length,
+      totalIncorrect: incorrect.length,
+      incorrectIndices: incorrect,
+      percentageCorrect: asked.length > 0 ? (correct.length / asked.length) * 100 : 0,
+      totalQuestions,
+    };
+  } catch (error) {
+    console.error('Error getting progress stats:', error);
+    throw error;
+  }
+};
+
+/**
+ * Reset progress for a specific test version (clear all tracking)
+ */
+export const resetProgress = async (
+  username: string,
+  testVersion: '2008' | '2025'
+): Promise<void> => {
+  try {
+    const askedField = testVersion === '2025' ? 'questions_asked_2025' : 'questions_asked_2008';
+    const correctField = testVersion === '2025' ? 'questions_correct_2025' : 'questions_correct_2008';
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        [askedField]: [],
+        [correctField]: [],
+      })
+      .eq('username', username);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error resetting progress:', error);
+    throw error;
   }
 };

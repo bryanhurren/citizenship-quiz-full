@@ -7,12 +7,14 @@ interface UpgradeModalProps {
   visible: boolean;
   onClose: () => void;
   onUpgrade: () => Promise<void>;
+  title?: string;
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   visible,
   onClose,
   onUpgrade,
+  title = 'Upgrade to Premium',
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -44,7 +46,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           onPress={(e) => e.stopPropagation()}
         >
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.title}>Upgrade to Premium</Text>
+            <Text style={styles.title}>{title}</Text>
 
             <View style={styles.benefitsSection}>
               <Text style={styles.sectionTitle}>Premium Benefits</Text>
@@ -79,7 +81,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </View>
 
             <View style={styles.pricingSection}>
-              <Text style={styles.price}>$1/week</Text>
+              <Text style={styles.price}>$0.99/week</Text>
               <Text style={styles.pricingSubtext}>
                 Your subscription helps cover AI processing costs and keeps the app running
               </Text>

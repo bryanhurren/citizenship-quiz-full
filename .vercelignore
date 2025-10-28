@@ -1,0 +1,16 @@
+# Exclude the iOS app directory (not needed for web deployment)
+CitizenshipQuizApp/
+
+# Exclude development files
+.env
+.DS_Store
+*.md
+
+# Exclude git
+.git/
+
+# Node modules are already excluded by default
+node_modules/
+
+# Exclude PDFs and other large files
+*.pdf

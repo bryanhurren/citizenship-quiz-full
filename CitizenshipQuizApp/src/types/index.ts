@@ -7,6 +7,7 @@ export interface Question {
 
 export type TestVersion = '2008' | '2025';
 export type QuizMode = 'formal' | 'comedy';
+export type StudyMode = 'random' | 'focused';
 export type AnswerGrade = 'correct' | 'partial' | 'incorrect';
 export type SubscriptionTier = 'free' | 'premium';
 export type SessionStatus = 'passed' | 'failed' | 'in_progress' | 'not_started';
@@ -52,6 +53,7 @@ export interface User {
   email?: string;
   password?: string;
   profile_picture?: string | null;
+  apple_user_id?: string | null; // Apple Sign-In stable user identifier
   current_question: number;
   correct_count: number;
   partial_count: number;
@@ -73,6 +75,12 @@ export interface User {
   last_notification_sent: string | null;
   questions_answered_today: number;
   questions_reset_at: string | null;
+  // Progress tracking fields
+  questions_asked_2008?: number[];
+  questions_asked_2025?: number[];
+  questions_correct_2008?: number[];
+  questions_correct_2025?: number[];
+  study_mode?: StudyMode;
 }
 
 export interface EvaluationResponse {
@@ -80,10 +88,20 @@ export interface EvaluationResponse {
   feedback: string;
 }
 
+export interface ProgressStats {
+  totalAsked: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  incorrectIndices: number[];
+  percentageCorrect: number;
+  totalQuestions: number;
+}
+
 export interface QuizState {
-  currentUser: User | null;
+  currentUser: User | 'guest' | null;
   selectedMode: QuizMode | null;
   selectedTestVersion: TestVersion | null;
+  studyMode: StudyMode | null;
   currentQuestion: number;
   correctCount: number;
   partialCount: number;
@@ -97,8 +115,10 @@ export interface QuizState {
 
 // Navigation types
 export type RootStackParamList = {
+  Welcome: undefined;
   Main: undefined;
   Login: undefined;
+  PastSessions: undefined;
 };
 
 export type MainTabParamList = {
@@ -110,4 +130,12 @@ export type SessionStackParamList = {
   ModeSelection: undefined;
   Quiz: undefined;
   Results: undefined;
+  FocusedModeComplete: {
+    previousIncorrect: number;
+    nowCorrect: number;
+    stillIncorrect: number;
+    previousAccuracy: number;
+    newAccuracy: number;
+    testVersion: '2008' | '2025';
+  };
 };

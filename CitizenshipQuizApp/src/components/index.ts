@@ -7,3 +7,4 @@ export { WelcomeModal } from './WelcomeModal';
 export { GoogleSignInButton } from './GoogleSignInButton';
 export { UpgradeModal } from './UpgradeModal';
 export { TypingIndicator } from './TypingIndicator';
+export { SignUpPrompt } from './SignUpPrompt';
