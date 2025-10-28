@@ -15,7 +15,7 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!_expo|assets|favicon.ico|metadata.json).*)",
       "destination": "/index.html"
     }
   ]
