@@ -124,6 +124,13 @@ Respond ONLY with valid JSON, no other text.`
                 // Normalize grade to lowercase (Claude sometimes returns "Correct" instead of "correct")
                 if (evaluation.grade) {
                     evaluation.grade = evaluation.grade.toLowerCase();
+
+                    // Fix common typos from Claude
+                    if (evaluation.grade === 'corect') {
+                        evaluation.grade = 'correct';
+                    } else if (evaluation.grade === 'incorect') {
+                        evaluation.grade = 'incorrect';
+                    }
                 }
             } catch (e) {
                 console.error('Failed to parse JSON:', responseText);

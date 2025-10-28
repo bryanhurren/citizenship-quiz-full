@@ -4,23 +4,19 @@ Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
 Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
 Starting project at /Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp
 Starting Metro Bundler
-The following packages should be updated for best compatibility with the installed expo version:
-  expo@54.0.16 - expected version: 54.0.20
-  react-native@0.81.4 - expected version: 0.81.5
-Your project may not work correctly until you install the expected versions of the packages.
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
-| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
 › Opening exp://192.168.6.109:8081 on iPhone 16 Pro Max
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
 TypeError: Invalid Version: 54.0.6
 
 Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
@@ -32,10 +28,10 @@ Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
     at new SemVer (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/semver/classes/semver.js:40:13)
     at compare (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/semver/functions/compare.js:5:3)
     at Object.eq (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/semver/functions/eq.js:4:29)
-    at ExpoGoInstaller.isInstalledClientVersionMismatched (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/expo/node_modules/@expo/cli/src/start/platforms/ExpoGoInstaller.ts:40:44)
-    at ExpoGoInstaller.promptForUninstallExpoGoIfInstalledClientVersionMismatchedAndReturnShouldInstallAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/expo/node_modules/@expo/cli/src/start/platforms/ExpoGoInstaller.ts:73:14)
-    at ExpoGoInstaller.ensureAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/expo/node_modules/@expo/cli/src/start/platforms/ExpoGoInstaller.ts:122:9)
-    at ApplePlatformManager.openProjectInExpoGoAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/expo/node_modules/@expo/cli/src/start/platforms/PlatformManager.ts:118:5)
+    at ExpoGoInstaller.isInstalledClientVersionMismatched (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/@expo/cli/src/start/platforms/ExpoGoInstaller.ts:40:44)
+    at ExpoGoInstaller.promptForUninstallExpoGoIfInstalledClientVersionMismatchedAndReturnShouldInstallAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/@expo/cli/src/start/platforms/ExpoGoInstaller.ts:73:14)
+    at ExpoGoInstaller.ensureAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/@expo/cli/src/start/platforms/ExpoGoInstaller.ts:122:9)
+    at ApplePlatformManager.openProjectInExpoGoAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/@expo/cli/src/start/platforms/PlatformManager.ts:118:5)
     at async Promise.allSettled (index 1)
-    at openPlatformsAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/expo/node_modules/@expo/cli/src/start/server/openPlatforms.ts:10:19)
-    at startAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/expo/node_modules/@expo/cli/src/start/startAsync.ts:114:3)
+    at openPlatformsAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/@expo/cli/src/start/server/openPlatforms.ts:10:19)
+    at startAsync (/Users/bryanhurren/Documents/claude-test/CitizenshipQuizApp/node_modules/@expo/cli/src/start/startAsync.ts:114:3)
