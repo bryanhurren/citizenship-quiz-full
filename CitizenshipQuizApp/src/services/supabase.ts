@@ -193,6 +193,7 @@ export const incrementQuestionsAnswered = async (username: string): Promise<User
 // Session operations
 export const saveSession = async (sessionData: Omit<Session, 'id' | 'created_at'>): Promise<Session | null> => {
   try {
+    console.log('saveSession called with data:', sessionData);
     const { data, error } = await supabase
       .from('sessions')
       .insert([sessionData])
@@ -200,13 +201,15 @@ export const saveSession = async (sessionData: Omit<Session, 'id' | 'created_at'
       .single();
 
     if (error) {
-      console.error('Error saving session:', error);
+      console.error('Supabase error saving session:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return null;
     }
 
+    console.log('Session saved successfully to Supabase:', data);
     return data as Session;
   } catch (error) {
-    console.error('Error saving session:', error);
+    console.error('Exception saving session:', error);
     return null;
   }
 };
