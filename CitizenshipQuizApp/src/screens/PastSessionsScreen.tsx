@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
 import { getUserSessions } from '../services/supabase';
-import { Card, Header } from '../components';
+import { Card } from '../components';
 
 interface PastSession {
   id: string;
@@ -81,7 +81,6 @@ export const PastSessionsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <Header />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Past Sessions</Text>
 
