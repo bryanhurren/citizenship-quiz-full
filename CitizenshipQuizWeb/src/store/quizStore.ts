@@ -279,6 +279,7 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
         last_session_date: new Date().toISOString(),
         mode: state.selectedMode || 'formal',
         test_version: state.selectedTestVersion || '2008',
+        study_mode: state.studyMode || 'random', // Save study mode (focused/random)
         session_status: 'in_progress', // Always set to in_progress when saving
         shuffled_question_indices: shuffledIndices, // Save the shuffled order
       };

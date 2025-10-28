@@ -446,6 +446,13 @@ export const QuizScreen = () => {
     console.log('incorrectCount:', incorrectCount);
     console.log('shuffledQuestions.length:', shuffledQuestions.length);
 
+    // Capture study mode BEFORE any state updates that might clear it
+    const capturedStudyMode = studyMode;
+    const capturedCorrectCount = correctCount;
+    const capturedIncorrectCount = incorrectCount;
+    const capturedShuffledQuestionsLength = shuffledQuestions.length;
+    const capturedSelectedTestVersion = selectedTestVersion;
+
     setSessionCompleted(true);
 
     // Save session to database FIRST, before navigation
@@ -489,18 +496,18 @@ export const QuizScreen = () => {
       console.log('✅ Database updates complete');
     }
 
-    // Check if this is a focused mode session
-    if (studyMode === 'focused' && currentUser && selectedTestVersion) {
+    // Check if this is a focused mode session (use captured value)
+    if (capturedStudyMode === 'focused' && currentUser && capturedSelectedTestVersion) {
       console.log('✓ Navigating to FocusedModeComplete screen');
       try {
         // Navigate to FocusedModeComplete screen with stats
         navigation.navigate('FocusedModeComplete' as never, {
-          previousIncorrect: shuffledQuestions.length,
-          nowCorrect: correctCount,
-          stillIncorrect: incorrectCount,
+          previousIncorrect: capturedShuffledQuestionsLength,
+          nowCorrect: capturedCorrectCount,
+          stillIncorrect: capturedIncorrectCount,
           previousAccuracy: 0,
-          newAccuracy: correctCount > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0,
-          testVersion: selectedTestVersion,
+          newAccuracy: capturedCorrectCount > 0 ? (capturedCorrectCount / (capturedCorrectCount + capturedIncorrectCount)) * 100 : 0,
+          testVersion: capturedSelectedTestVersion,
         } as never);
         return;
       } catch (error) {
@@ -516,13 +523,13 @@ export const QuizScreen = () => {
       (r) => r.grade === 'incorrect'
     );
 
-    // Create summary message
+    // Create summary message (use captured values for consistency)
     const summaryText = `
 🎯 Quiz Complete: ${status.toUpperCase()}
 
-📊 Final Score: ${correctCount}/${totalQuestionsAsked}
-✅ Correct: ${correctCount}
-❌ Incorrect: ${incorrectCount}
+📊 Final Score: ${capturedCorrectCount}/${totalQuestionsAsked}
+✅ Correct: ${capturedCorrectCount}
+❌ Incorrect: ${capturedIncorrectCount}
 
 ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuestions.map((q, i) => `\n${i + 1}. ${q.question}\nYour answer: "${q.userAnswer}"\nCorrect answer: "${q.correctAnswer}"\n`).join('')}` : ''}
 `.trim();
