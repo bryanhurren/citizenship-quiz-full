@@ -34,7 +34,24 @@ export const evaluateAnswer = async (
       return null;
     }
 
-    return data as EvaluationResponse;
+    // Handle case where API might return stringified JSON
+    let evaluation = data;
+    if (typeof data === 'string') {
+      try {
+        evaluation = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse stringified response:', data);
+        return null;
+      }
+    }
+
+    // Ensure we have valid grade and feedback fields
+    if (!evaluation.grade || !evaluation.feedback) {
+      console.error('Invalid evaluation response:', evaluation);
+      return null;
+    }
+
+    return evaluation as EvaluationResponse;
   } catch (error) {
     console.error('Error evaluating answer:', error);
     return null;

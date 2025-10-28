@@ -409,11 +409,18 @@ export const QuizScreen = () => {
         return;
       }
 
+      // Debug logging
+      console.log('Evaluation object:', evaluation);
+      console.log('Evaluation feedback type:', typeof evaluation.feedback);
+      console.log('Evaluation feedback value:', evaluation.feedback);
+
       // Add feedback message to chat
       const feedbackMessage: ChatMessage = {
         id: `feedback-${currentQuestion}-${Date.now()}`,
         type: 'feedback',
-        content: evaluation.feedback,
+        content: typeof evaluation.feedback === 'string'
+          ? evaluation.feedback
+          : JSON.stringify(evaluation.feedback),
         grade: evaluation.grade,
         correctAnswer: question.a,
         timestamp: new Date(),
