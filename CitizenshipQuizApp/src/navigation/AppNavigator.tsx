@@ -27,37 +27,62 @@ const SessionStack = createNativeStackNavigator<SessionStackParamList>();
 function SessionStackNavigator() {
   const currentUser = useQuizStore((state) => state.currentUser);
   const navigationRef = React.useRef<any>(null);
+  const [isFocused, setIsFocused] = React.useState(false);
 
   // Determine initial route based on session status
   const initialRouteName = currentUser?.session_status === 'in_progress' ? 'Quiz' : 'ModeSelection';
 
-  // Listen for tab focus and navigate to correct screen based on session status
-  React.useEffect(() => {
-    if (navigationRef.current) {
-      if (currentUser?.session_status === 'in_progress') {
-        // If we have an active session, ensure we're on Quiz screen
-        const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
-        if (currentRoute === 'ModeSelection') {
-          navigationRef.current.navigate('Quiz');
-        }
-      } else {
-        // No active session - reset to ModeSelection if we're on a completion screen
-        const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
-        if (currentRoute === 'FocusedModeComplete' || currentRoute === 'Results') {
-          navigationRef.current.reset({
-            index: 0,
-            routes: [{ name: 'ModeSelection' }],
-          });
-        }
+  // Listen for navigation state changes and reset if needed
+  const handleNavigationReady = React.useCallback(() => {
+    if (!navigationRef.current) return;
+
+    if (currentUser?.session_status === 'in_progress') {
+      // If we have an active session, ensure we're on Quiz screen
+      const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
+      if (currentRoute === 'ModeSelection') {
+        navigationRef.current.navigate('Quiz');
+      }
+    } else {
+      // No active session - reset to ModeSelection if we're on a completion screen
+      const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
+      if (currentRoute === 'FocusedModeComplete' || currentRoute === 'Results') {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'ModeSelection' }],
+        });
       }
     }
   }, [currentUser?.session_status]);
 
+  // Run on session status changes
+  React.useEffect(() => {
+    handleNavigationReady();
+  }, [currentUser?.session_status, handleNavigationReady]);
+
+  // Also run when this navigator becomes focused (tab switch)
+  React.useEffect(() => {
+    if (isFocused) {
+      // Small delay to ensure navigation state is ready
+      setTimeout(handleNavigationReady, 100);
+    }
+  }, [isFocused, handleNavigationReady]);
+
   return (
     <SessionStack.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+      }}
       initialRouteName={initialRouteName}
       ref={navigationRef}
+      screenListeners={{
+        state: () => {
+          // Track when this navigator's state changes
+          setIsFocused(true);
+        },
+        blur: () => {
+          setIsFocused(false);
+        },
+      }}
     >
       <SessionStack.Screen
         name="ModeSelection"
