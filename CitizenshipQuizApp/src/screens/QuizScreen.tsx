@@ -643,7 +643,13 @@ export const QuizScreen = () => {
         question_results: useQuizStore.getState().questionResults,
       };
 
-      await saveSessionToDb(sessionData);
+      console.log('Saving focused mode session to database:', sessionData);
+      const savedSession = await saveSessionToDb(sessionData);
+      if (savedSession) {
+        console.log('Focused mode session saved successfully:', savedSession.id);
+      } else {
+        console.error('Failed to save focused mode session to database');
+      }
 
       // Update user record - clear session_status
       await updateUser({
@@ -723,7 +729,13 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
         question_results: useQuizStore.getState().questionResults,
       };
 
-      await saveSessionToDb(sessionData);
+      console.log('Saving session to database:', sessionData);
+      const savedSession = await saveSessionToDb(sessionData);
+      if (savedSession) {
+        console.log('Session saved successfully:', savedSession.id);
+      } else {
+        console.error('Failed to save session to database');
+      }
 
       // Update user record - clear session_status and update best score
       const bestScore = Math.max(currentUser.best_score || 0, correctCount);

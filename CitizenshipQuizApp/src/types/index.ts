@@ -38,6 +38,7 @@ export interface Session {
   user_id: string;
   test_version: TestVersion;
   mode: QuizMode;
+  study_mode?: 'random' | 'focused'; // Optional for backward compatibility
   correct_count: number;
   incorrect_count: number;
   total_questions_asked: number;
