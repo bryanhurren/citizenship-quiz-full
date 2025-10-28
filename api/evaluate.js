@@ -134,11 +134,36 @@ Respond ONLY with valid JSON, no other text.`
                 }
             } catch (e) {
                 console.error('Failed to parse JSON:', responseText);
-                // Fallback if AI doesn't return proper JSON
-                evaluation = {
-                    grade: 'incorrect',
-                    feedback: responseText || 'Unable to evaluate answer. Please try again.'
-                };
+                console.error('Parse error:', e.message);
+
+                // Try to extract JSON if it's wrapped in extra text
+                const jsonMatch = responseText.match(/\{[\s\S]*"grade"[\s\S]*"feedback"[\s\S]*\}/);
+                if (jsonMatch) {
+                    try {
+                        evaluation = JSON.parse(jsonMatch[0]);
+                        // Apply same normalizations
+                        if (evaluation.grade) {
+                            evaluation.grade = evaluation.grade.toLowerCase();
+                            if (evaluation.grade === 'corect') {
+                                evaluation.grade = 'correct';
+                            } else if (evaluation.grade === 'incorect') {
+                                evaluation.grade = 'incorrect';
+                            }
+                        }
+                    } catch (e2) {
+                        // Still failed, use fallback
+                        evaluation = {
+                            grade: 'incorrect',
+                            feedback: responseText || 'Unable to evaluate answer. Please try again.'
+                        };
+                    }
+                } else {
+                    // Fallback if AI doesn't return proper JSON
+                    evaluation = {
+                        grade: 'incorrect',
+                        feedback: responseText || 'Unable to evaluate answer. Please try again.'
+                    };
+                }
             }
 
             return res.json(evaluation);
