@@ -181,8 +181,9 @@ export const ModeSelectionScreen = () => {
     setStudyMode(studyMode);
 
     // Get questions using the store's helper function
+    let shuffled;
     try {
-      const shuffled = getQuestionsForSession(
+      shuffled = getQuestionsForSession(
         studyMode,
         testVersion,
         userForQuestions,
@@ -198,6 +199,22 @@ export const ModeSelectionScreen = () => {
         [{ text: 'OK' }]
       );
       return;
+    }
+
+    // Warn if focused mode has very few questions
+    if (studyMode === 'focused' && shuffled.length <= 2) {
+      const questionWord = shuffled.length === 1 ? 'question' : 'questions';
+      Alert.alert(
+        'Quick Practice Session',
+        `You only have ${shuffled.length} ${questionWord} to review. Great job on your progress!`,
+        [
+          { text: 'Continue', style: 'default' },
+          { text: 'Cancel', style: 'cancel', onPress: () => {
+            resetQuiz();
+            return;
+          }}
+        ]
+      );
     }
 
     // Navigate to quiz

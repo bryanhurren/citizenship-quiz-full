@@ -19,13 +19,9 @@ export const FocusedModeCompleteScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'FocusedModeComplete'>>();
 
-  console.log('🎯 FocusedModeCompleteScreen mounted');
-  console.log('🎯 Route params:', route.params);
-
   // Defensive check: If route params are missing (e.g., direct navigation or page refresh on web),
   // redirect to profile to prevent white screen error
   if (!route.params) {
-    console.log('❌ NO PARAMS - Redirecting to You tab');
     React.useEffect(() => {
       (navigation as any).navigate('You');
     }, []);

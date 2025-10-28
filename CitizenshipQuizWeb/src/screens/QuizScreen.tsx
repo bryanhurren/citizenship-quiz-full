@@ -190,7 +190,6 @@ export const QuizScreen = () => {
     // FOCUSED MODE: Complete when all shuffled questions are answered
     if (studyMode === 'focused') {
       if (totalQuestionsAsked >= shuffledQuestions.length) {
-        console.log('✅ FOCUSED MODE COMPLETE: answered all questions');
         return 'passed'; // Focused mode doesn't have pass/fail, just completion
       }
       return null;
@@ -448,28 +447,12 @@ export const QuizScreen = () => {
   };
 
   const handleSessionComplete = async (status: 'passed' | 'failed') => {
-    console.log('=== SESSION COMPLETE ===');
-    console.log('studyMode:', studyMode);
-    console.log('currentUser:', !!currentUser);
-    console.log('selectedTestVersion:', selectedTestVersion);
-    console.log('correctCount:', correctCount);
-    console.log('incorrectCount:', incorrectCount);
-    console.log('shuffledQuestions.length:', shuffledQuestions.length);
-
     // Capture study mode BEFORE any state updates that might clear it
     const capturedStudyMode = studyMode;
     const capturedCorrectCount = correctCount;
     const capturedIncorrectCount = incorrectCount;
     const capturedShuffledQuestionsLength = shuffledQuestions.length;
     const capturedSelectedTestVersion = selectedTestVersion;
-
-    console.log('🔍 CAPTURED VALUES:', {
-      capturedStudyMode,
-      capturedCorrectCount,
-      capturedIncorrectCount,
-      capturedShuffledQuestionsLength,
-      capturedSelectedTestVersion
-    });
 
     setSessionCompleted(true);
 
@@ -511,17 +494,9 @@ export const QuizScreen = () => {
       if (refreshedUser) {
         setCurrentUser(refreshedUser);
       }
-      console.log('✅ Database updates complete');
     }
 
     // Check if this is a focused mode session (use captured value)
-    console.log('🔍 CHECKING FOCUSED MODE:', {
-      capturedStudyMode,
-      isFocused: capturedStudyMode === 'focused',
-      hasUser: !!currentUser,
-      hasTestVersion: !!capturedSelectedTestVersion
-    });
-
     if (capturedStudyMode === 'focused' && currentUser && capturedSelectedTestVersion) {
       const navParams = {
         previousIncorrect: capturedShuffledQuestionsLength,
@@ -531,17 +506,13 @@ export const QuizScreen = () => {
         newAccuracy: capturedCorrectCount > 0 ? (capturedCorrectCount / (capturedCorrectCount + capturedIncorrectCount)) * 100 : 0,
         testVersion: capturedSelectedTestVersion,
       };
-      console.log('✓ NAVIGATING TO FocusedModeComplete with params:', navParams);
       try {
         navigation.navigate('FocusedModeComplete' as never, navParams as never);
-        console.log('✅ Navigation.navigate() called successfully');
         return;
       } catch (error) {
-        console.error('❌ Error navigating to focused mode complete:', error);
+        console.error('Error navigating to focused mode complete:', error);
         // Fall through to regular completion flow
       }
-    } else {
-      console.log('⚠️  NOT focused mode, showing regular completion');
     }
 
     // Get incorrect questions for summary
