@@ -1,5 +1,6 @@
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
+const { checkRateLimit } = require('./lib/rateLimit');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const supabase = createClient(
@@ -8,13 +9,19 @@ const supabase = createClient(
 );
 
 module.exports = async (req, res) => {
-  // Enable CORS
+  // Enable CORS - restrict to production domain
+  const allowedOrigins = ['https://www.theeclodapps.com', 'http://localhost:8082'];
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
   res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'Content-Type, Authorization'
   );
 
   if (req.method === 'OPTIONS') {
@@ -33,32 +40,63 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
+    // Rate limiting: 5 requests per minute per user
+    const rateLimitResult = checkRateLimit(userId, 5, 60000);
+    if (!rateLimitResult.allowed) {
+      return res.status(429).json({
+        error: 'Too many requests. Please try again later.',
+        resetAt: rateLimitResult.resetAt,
+      });
+    }
+
+    // Check if user already has an active subscription
+    console.log(`Checking for existing subscriptions for ${userEmail}`);
+
+    // Search for existing customers with this email
+    const existingCustomers = await stripe.customers.list({
+      email: userEmail,
+      limit: 10,
+    });
+
+    // Check if any customer has an active subscription
+    for (const customer of existingCustomers.data) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: 'active',
+        limit: 10,
+      });
+
+      if (subscriptions.data.length > 0) {
+        console.log(`⚠️ User ${userEmail} already has ${subscriptions.data.length} active subscription(s)`);
+
+        // Return error to prevent duplicate subscription
+        return res.status(400).json({
+          error: 'You already have an active subscription',
+          existingSubscriptionId: subscriptions.data[0].id,
+          customerId: customer.id,
+          message: 'Please contact support if you believe this is an error.',
+        });
+      }
+    }
+
+    console.log(`✅ No existing subscriptions found for ${userEmail}, creating new checkout session`);
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'AI Citizenship Quiz - Premium Weekly',
-              description: 'Unlimited questions, no daily limits, premium features',
-            },
-            unit_amount: 99, // $0.99 in cents
-            recurring: {
-              interval: 'week',
-            },
-          },
+          price: process.env.STRIPE_PRICE_ID,
           quantity: 1,
         },
       ],
       mode: 'subscription',
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8082'}?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8082'}?canceled=true`,
-      client_reference_id: userId.toString(),
+      client_reference_id: userId,
       customer_email: userEmail,
       metadata: {
-        userId: userId.toString(),
+        userId: userId,
         userEmail,
       },
     });

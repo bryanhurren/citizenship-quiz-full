@@ -12,6 +12,7 @@ import {
   ResultsScreen,
   ProfileScreen,
   PastSessionsScreen,
+  FocusedModeCompleteScreen,
 } from '../screens';
 import { Colors } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
@@ -56,6 +57,11 @@ function SessionStackNavigator() {
       <SessionStack.Screen
         name="Results"
         component={ResultsScreen}
+      />
+      <SessionStack.Screen
+        name="FocusedModeComplete"
+        component={FocusedModeCompleteScreen}
+        options={{ title: 'Practice Complete' }}
       />
     </SessionStack.Navigator>
   );
@@ -125,6 +131,33 @@ export function AppNavigator() {
       }
     }
     checkLoggedInUser();
+  }, []);
+
+  // Check for Stripe checkout success and refresh user data
+  useEffect(() => {
+    async function handleStripeSuccess() {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'true') {
+          console.log('Stripe checkout successful, refreshing user data...');
+          // Remove query params from URL
+          window.history.replaceState({}, '', window.location.pathname);
+
+          // Refresh user data after a short delay to allow webhook to process
+          setTimeout(async () => {
+            const email = await getLoggedInUser();
+            if (email) {
+              const user = await getUser(email);
+              if (user) {
+                console.log('User data refreshed after Stripe checkout');
+                setCurrentUser(user);
+              }
+            }
+          }, 2000); // Wait 2 seconds for webhook to process
+        }
+      }
+    }
+    handleStripeSuccess();
   }, []);
 
   if (isLoading) {

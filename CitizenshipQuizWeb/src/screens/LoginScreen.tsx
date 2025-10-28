@@ -8,19 +8,18 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import AppleSignin from 'react-apple-signin-auth';
 import { Button, Input, Card, WelcomeModal, Header } from '../components';
 import { Colors, Spacing, FontSizes } from '../constants/theme';
 import { useQuizStore, storeLoggedInUser } from '../store/quizStore';
 import {
   getUser,
   createUser,
-  validateInviteCode,
-  markInviteCodeAsUsed,
   updateUser,
-  requestAccess,
 } from '../services/supabase';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,23 +27,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Google OAuth Client ID for web
 const GOOGLE_WEB_CLIENT_ID = '359536687611-jeqab1murfjb02o51mt5pi7g290gtggt.apps.googleusercontent.com';
 
+// Apple OAuth Client ID (Service ID) - You'll need to configure this in Apple Developer Console
+const APPLE_CLIENT_ID = 'com.theeclodapps.citizenshipquiz.web';
+
 export const LoginScreen = () => {
   const navigation = useNavigation();
   const setCurrentUser = useQuizStore((state) => state.setCurrentUser);
 
   // OAuth state
   const [isLoading, setIsLoading] = useState(false);
-  const [showInviteCodePrompt, setShowInviteCodePrompt] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
-  const [pendingOAuthUser, setPendingOAuthUser] = useState<{
-    email: string;
-    name: string;
-    provider: 'google';
-  } | null>(null);
-
-  // Access request state
-  const [accessStatus, setAccessStatus] = useState<'pending' | 'denied' | null>(null);
-  const [userEmail, setUserEmail] = useState<string>('');
 
   // Welcome modal state
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -57,21 +48,16 @@ export const LoginScreen = () => {
   const handleWelcomeModalDismiss = () => {
     setShowWelcomeModal(false);
 
-    if (isNewUser) {
-      // New user - navigate to Mode Selection
-      (navigation as any).navigate('Session', {
-        screen: 'ModeSelection',
-      });
-    } else {
-      // Existing user - navigate to You tab (Main)
-      navigation.navigate('Main' as never);
-    }
+    // Always navigate to Main first, then let the tab navigator handle the rest
+    navigation.navigate('Main' as never, {
+      screen: isNewUser ? 'Session' : 'You',
+      params: isNewUser ? { screen: 'ModeSelection' } : undefined,
+    } as never);
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setError('');
     setIsLoading(true);
-    setAccessStatus(null);
 
     try {
       // Decode JWT to get user info
@@ -79,8 +65,6 @@ export const LoginScreen = () => {
       const email = decoded.email;
       const name = decoded.name || decoded.given_name || 'User';
       const photo = decoded.picture || null; // Google profile picture
-
-      setUserEmail(email);
 
       // Check if user already exists
       const existingUser = await getUser(email);
@@ -90,53 +74,32 @@ export const LoginScreen = () => {
         if (photo && photo !== existingUser.profile_picture) {
           const updatedUser = await updateUser(email, { profile_picture: photo });
           if (updatedUser) {
-            // Check access status with updated user
-            if (updatedUser.access_status === 'granted') {
-              await storeLoggedInUser(email);
-              setCurrentUser(updatedUser);
-              // Check if this is first login after access granted (no mode/test_version selected yet)
-              const isFirstLogin = !updatedUser.mode && !updatedUser.test_version;
-              setIsNewUser(isFirstLogin);
-              setShowWelcomeModal(true);
-            } else if (updatedUser.access_status === 'pending') {
-              setAccessStatus('pending');
-            } else if (updatedUser.access_status === 'denied') {
-              setAccessStatus('denied');
-            }
+            await storeLoggedInUser(email);
+            setCurrentUser(updatedUser);
+            // Check if this is first login (no mode/test_version selected yet)
+            const isFirstLogin = !updatedUser.mode && !updatedUser.test_version;
+            setIsNewUser(isFirstLogin);
+            setShowWelcomeModal(true);
           } else {
             // Failed to update, use existing user
-            if (existingUser.access_status === 'granted') {
-              await storeLoggedInUser(email);
-              setCurrentUser(existingUser);
-              // Check if this is first login after access granted (no mode/test_version selected yet)
-              const isFirstLogin = !existingUser.mode && !existingUser.test_version;
-              setIsNewUser(isFirstLogin);
-              setShowWelcomeModal(true);
-            } else if (existingUser.access_status === 'pending') {
-              setAccessStatus('pending');
-            } else if (existingUser.access_status === 'denied') {
-              setAccessStatus('denied');
-            }
-          }
-        } else {
-          // No photo update needed
-          if (existingUser.access_status === 'granted') {
             await storeLoggedInUser(email);
             setCurrentUser(existingUser);
-            // Check if this is first login after access granted (no mode/test_version selected yet)
+            // Check if this is first login (no mode/test_version selected yet)
             const isFirstLogin = !existingUser.mode && !existingUser.test_version;
             setIsNewUser(isFirstLogin);
             setShowWelcomeModal(true);
-          } else if (existingUser.access_status === 'pending') {
-            setAccessStatus('pending');
-          } else if (existingUser.access_status === 'denied') {
-            setAccessStatus('denied');
-          } else {
-            setError('Account status unknown. Please contact support.');
           }
+        } else {
+          // No photo update needed
+          await storeLoggedInUser(email);
+          setCurrentUser(existingUser);
+          // Check if this is first login (no mode/test_version selected yet)
+          const isFirstLogin = !existingUser.mode && !existingUser.test_version;
+          setIsNewUser(isFirstLogin);
+          setShowWelcomeModal(true);
         }
       } else {
-        // New user - create account with pending access
+        // New user - create account with immediate access (granted)
         const newUser = await createUser({
           username: email,
           password: '', // No password for OAuth users
@@ -157,13 +120,16 @@ export const LoginScreen = () => {
           subscription_expires_at: null,
           questions_answered_today: 0,
           questions_reset_at: new Date().toISOString(),
-          access_status: 'pending', // New users start with pending access
+          access_status: 'granted', // New users get immediate access
           access_requested_at: new Date().toISOString(),
         });
 
         if (newUser) {
-          // Show access request message
-          setAccessStatus('pending');
+          // Log in immediately
+          await storeLoggedInUser(email);
+          setCurrentUser(newUser);
+          setIsNewUser(true); // Always true for new users
+          setShowWelcomeModal(true);
         } else {
           setError('Failed to create account. Please try again.');
         }
@@ -181,25 +147,77 @@ export const LoginScreen = () => {
     setIsLoading(false);
   };
 
-  const handleRequestAccess = async () => {
-    if (!userEmail) return;
-
-    setIsLoading(true);
+  const handleAppleSuccess = async (response: any) => {
     setError('');
+    setIsLoading(true);
 
     try {
-      const success = await requestAccess(userEmail);
-      if (success) {
-        setAccessStatus('pending');
+      // Apple returns user info in the authorization object
+      const { authorization, user } = response;
+
+      // Decode the ID token to get email
+      const decoded = JSON.parse(atob(authorization.id_token.split('.')[1]));
+      const email = decoded.email;
+      const name = user?.name ? `${user.name.firstName} ${user.name.lastName}` : email.split('@')[0];
+
+      // Check if user already exists
+      const existingUser = await getUser(email);
+
+      if (existingUser) {
+        // Existing user - log in
+        await storeLoggedInUser(email);
+        setCurrentUser(existingUser);
+        const isFirstLogin = !existingUser.mode && !existingUser.test_version;
+        setIsNewUser(isFirstLogin);
+        setShowWelcomeModal(true);
       } else {
-        setError('Failed to request access. Please try again.');
+        // New user - create account with immediate access (granted)
+        const newUser = await createUser({
+          username: email,
+          password: '', // No password for OAuth users
+          profile_picture: null, // Apple doesn't provide profile pictures
+          current_question: 0,
+          correct_count: 0,
+          partial_count: 0,
+          incorrect_count: 0,
+          question_results: [],
+          completed: false,
+          best_score: 0,
+          last_session_date: null,
+          mode: undefined,
+          test_version: undefined,
+          session_status: 'not_started',
+          shuffled_question_indices: [],
+          subscription_tier: 'free',
+          subscription_expires_at: null,
+          questions_answered_today: 0,
+          questions_reset_at: new Date().toISOString(),
+          access_status: 'granted', // New users get immediate access
+          access_requested_at: new Date().toISOString(),
+        });
+
+        if (newUser) {
+          // Log in immediately
+          await storeLoggedInUser(email);
+          setCurrentUser(newUser);
+          setIsNewUser(true); // Always true for new users
+          setShowWelcomeModal(true);
+        } else {
+          setError('Failed to create account. Please try again.');
+        }
       }
     } catch (error) {
-      console.error('Request Access Error:', error);
-      setError('Failed to request access. Please try again.');
+      console.error('Apple Sign-In Error:', error);
+      setError('Failed to sign in with Apple. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAppleError = (error: any) => {
+    console.error('Apple Sign-In Error:', error);
+    setError('Apple Sign-In was cancelled or failed.');
+    setIsLoading(false);
   };
 
   return (
@@ -215,6 +233,12 @@ export const LoginScreen = () => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.header}>
+              <Text style={styles.appTitle}>AI Citizenship Quiz</Text>
+              <Image
+                source={require('../../assets/icon.png')}
+                style={styles.appIcon}
+                resizeMode="contain"
+              />
               <Text style={styles.subtitle}>
                 Practice for your US Citizenship test with AI-powered feedback
               </Text>
@@ -229,23 +253,7 @@ export const LoginScreen = () => {
                 </View>
               ) : null}
 
-              {accessStatus === 'pending' ? (
-                <View style={styles.accessBox}>
-                  <Text style={styles.accessTitle}>🕐 Access Request Pending</Text>
-                  <Text style={styles.accessText}>
-                    Your access request has been submitted. An administrator will review your request and grant access soon.
-                  </Text>
-                  <Text style={styles.accessEmail}>Account: {userEmail}</Text>
-                </View>
-              ) : accessStatus === 'denied' ? (
-                <View style={styles.accessBox}>
-                  <Text style={[styles.accessTitle, { color: Colors.error }]}>❌ Access Denied</Text>
-                  <Text style={styles.accessText}>
-                    Your access request was denied. Please contact the administrator if you believe this is an error.
-                  </Text>
-                  <Text style={styles.accessEmail}>Account: {userEmail}</Text>
-                </View>
-              ) : isLoading ? (
+              {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={Colors.primary} />
                   <Text style={styles.loadingText}>Signing in...</Text>
@@ -255,25 +263,46 @@ export const LoginScreen = () => {
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}
-                    useOneTap
                     theme="filled_blue"
                     size="large"
                     text="signin_with"
                     shape="rectangular"
                   />
+
+                  <View style={styles.appleButtonContainer}>
+                    <AppleSignin
+                      authOptions={{
+                        clientId: APPLE_CLIENT_ID,
+                        scope: 'email name',
+                        redirectURI: 'https://www.theeclodapps.com',
+                        state: 'state',
+                        nonce: 'nonce',
+                        usePopup: true,
+                      }}
+                      uiType="dark"
+                      className="apple-auth-button"
+                      onSuccess={handleAppleSuccess}
+                      onError={handleAppleError}
+                    />
+                  </View>
                 </View>
               )}
 
-              {!accessStatus && !isLoading && (
+              {!isLoading && (
                 <View style={styles.infoBox}>
                   <Text style={styles.infoText}>
-                    ✨ New users will need access approval{'\n'}
+                    ✨ Sign in to get started{'\n'}
                     📱 Your progress is saved to your account{'\n'}
                     🔒 We never share your data
                   </Text>
                 </View>
               )}
             </Card>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>© 2025 Copyright TheeClodApps</Text>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
 
@@ -304,6 +333,18 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: Spacing.xl,
+  },
+  appTitle: {
+    fontSize: FontSizes.xxxl,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  appIcon: {
+    width: 120,
+    height: 120,
+    marginBottom: Spacing.md,
   },
   subtitle: {
     fontSize: FontSizes.base,
@@ -382,5 +423,20 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  footer: {
+    marginTop: Spacing.xl,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  appleButtonContainer: {
+    marginTop: Spacing.md,
+    width: '100%',
+    alignItems: 'center',
   },
 });

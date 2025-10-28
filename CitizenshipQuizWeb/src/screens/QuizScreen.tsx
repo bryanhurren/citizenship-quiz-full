@@ -17,8 +17,16 @@ import { Badge, TypingIndicator, UpgradeModal, Header } from '../components';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
 import { evaluateAnswer } from '../services/api';
-import { saveSession as saveSessionToDb, updateUser as updateUserInDb } from '../services/supabase';
-import { AnswerGrade, ChatMessage, QuestionResult } from '../types';
+import {
+  saveSession as saveSessionToDb,
+  updateUser as updateUserInDb,
+  getUser,
+  updateQuestionProgress,
+  getProgressStats,
+} from '../services/supabase';
+import { AnswerGrade, ChatMessage, QuestionResult, Question } from '../types';
+import { allQuestions } from '../data/questions';
+import { allQuestions2025 } from '../data/questions-2025';
 import { Ionicons } from '@expo/vector-icons';
 import {
   getOfferings,
@@ -36,6 +44,7 @@ export const QuizScreen = () => {
   const currentUser = useQuizStore((state) => state.currentUser);
   const selectedMode = useQuizStore((state) => state.selectedMode);
   const selectedTestVersion = useQuizStore((state) => state.selectedTestVersion);
+  const studyMode = useQuizStore((state) => state.studyMode);
   const shuffledQuestions = useQuizStore((state) => state.shuffledQuestions);
   const currentQuestion = useQuizStore((state) => state.currentQuestion);
   const correctCount = useQuizStore((state) => state.correctCount);
@@ -75,6 +84,12 @@ export const QuizScreen = () => {
   // Get current question
   const question = shuffledQuestions[currentQuestion];
 
+  // Helper to get original question index from source array
+  const getQuestionIndex = (question: Question): number => {
+    const sourceQuestions = selectedTestVersion === '2025' ? allQuestions2025 : allQuestions;
+    return sourceQuestions.findIndex(q => q.q === question.q);
+  };
+
   // Check if user is logged in
   useEffect(() => {
     if (isFocused && !currentUser) {
@@ -88,6 +103,19 @@ export const QuizScreen = () => {
       checkDailyLimit();
     }
   }, [isFocused, currentUser]);
+
+  // Refresh user data when screen is focused (to pick up subscription changes)
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (isFocused && currentUser) {
+        const updatedUser = await getUser(currentUser.username);
+        if (updatedUser) {
+          setCurrentUser(updatedUser);
+        }
+      }
+    };
+    refreshUserData();
+  }, [isFocused]);
 
   // Check if no questions loaded (but not if session just completed)
   useEffect(() => {
@@ -137,6 +165,25 @@ export const QuizScreen = () => {
       return () => clearTimeout(focusTimer);
     }
   }, [isFocused]);
+
+  // Android Chrome keyboard fix: scroll input into view when focused
+  const handleInputFocus = () => {
+    // Detect if we're on Android Chrome (mobile)
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isChrome = /Chrome/i.test(navigator.userAgent);
+    const isMobile = /Mobile/i.test(navigator.userAgent);
+
+    if (isAndroid && isChrome && isMobile) {
+      // Wait for keyboard to appear, then scroll input into view
+      setTimeout(() => {
+        inputRef.current?.scrollIntoView?.({
+          behavior: 'smooth',
+          block: 'center', // Center the input in viewport
+          inline: 'nearest'
+        });
+      }, 300); // Give keyboard time to appear
+    }
+  };
 
   // Check for pass/fail conditions - returns status if session should end
   const checkSessionStatus = () => {
@@ -227,6 +274,23 @@ export const QuizScreen = () => {
             grade: 'correct',
             feedback: evaluation.feedback,
           });
+
+          // Update question progress in database
+          if (currentUser && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'correct',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+            }
+          }
         } else {
           incrementIncorrect();
           updateLastQuestionResult({
@@ -234,6 +298,23 @@ export const QuizScreen = () => {
             grade: 'incorrect',
             feedback: evaluation.feedback,
           });
+
+          // Update question progress in database
+          if (currentUser && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'incorrect',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+            }
+          }
         }
         setIsPartialRetry(false);
         // totalQuestionsAsked will auto-update from correctCount + incorrectCount
@@ -250,12 +331,46 @@ export const QuizScreen = () => {
         if (evaluation.grade === 'correct') {
           incrementCorrect();
           // totalQuestionsAsked will auto-update from correctCount + incorrectCount
+
+          // Update question progress in database
+          if (currentUser && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'correct',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+            }
+          }
         } else if (evaluation.grade === 'partial') {
           // Don't increment question count yet - wait for retry
           // Don't increment correct/incorrect yet either
         } else {
           incrementIncorrect();
           // totalQuestionsAsked will auto-update from correctCount + incorrectCount
+
+          // Update question progress in database
+          if (currentUser && question && selectedTestVersion) {
+            try {
+              const questionIndex = getQuestionIndex(question);
+              if (questionIndex !== -1) {
+                await updateQuestionProgress(
+                  currentUser.username,
+                  questionIndex,
+                  'incorrect',
+                  selectedTestVersion
+                );
+              }
+            } catch (error) {
+              console.error('Error updating question progress:', error);
+            }
+          }
         }
 
         // Increment daily question count
@@ -323,7 +438,78 @@ export const QuizScreen = () => {
   };
 
   const handleSessionComplete = async (status: 'passed' | 'failed') => {
+    console.log('=== SESSION COMPLETE ===');
+    console.log('studyMode:', studyMode);
+    console.log('currentUser:', !!currentUser);
+    console.log('selectedTestVersion:', selectedTestVersion);
+    console.log('correctCount:', correctCount);
+    console.log('incorrectCount:', incorrectCount);
+    console.log('shuffledQuestions.length:', shuffledQuestions.length);
+
     setSessionCompleted(true);
+
+    // Save session to database FIRST, before navigation
+    if (currentUser && selectedTestVersion && selectedMode) {
+      const sessionData = {
+        user_id: currentUser.id,
+        test_version: selectedTestVersion,
+        mode: selectedMode,
+        correct_count: correctCount,
+        partial_count: partialCount,
+        incorrect_count: incorrectCount,
+        total_questions_asked: totalQuestionsAsked,
+        session_status: status,
+        completed_at: new Date().toISOString(),
+        question_results: useQuizStore.getState().questionResults,
+      };
+
+      console.log('💾 Saving session to database...');
+      await saveSessionToDb(sessionData);
+
+      // Update user record - clear session_status and update best score
+      const bestScore = Math.max(currentUser.best_score || 0, correctCount);
+      console.log('👤 Updating user record...');
+      await updateUser({
+        session_status: null, // Clear session status
+        best_score: bestScore,
+        last_session_date: new Date().toISOString(),
+        completed: true,
+        current_question: 0,
+        correct_count: 0,
+        partial_count: 0,
+        incorrect_count: 0,
+        question_results: [],
+      });
+
+      // Refresh user data immediately to ensure UI reflects cleared session
+      const refreshedUser = await getUser(currentUser.username);
+      if (refreshedUser) {
+        setCurrentUser(refreshedUser);
+      }
+      console.log('✅ Database updates complete');
+    }
+
+    // Check if this is a focused mode session
+    if (studyMode === 'focused' && currentUser && selectedTestVersion) {
+      console.log('✓ Navigating to FocusedModeComplete screen');
+      try {
+        // Navigate to FocusedModeComplete screen with stats
+        navigation.navigate('FocusedModeComplete' as never, {
+          previousIncorrect: shuffledQuestions.length,
+          nowCorrect: correctCount,
+          stillIncorrect: incorrectCount,
+          previousAccuracy: 0,
+          newAccuracy: correctCount > 0 ? (correctCount / (correctCount + incorrectCount)) * 100 : 0,
+          testVersion: selectedTestVersion,
+        } as never);
+        return;
+      } catch (error) {
+        console.error('❌ Error navigating to focused mode complete:', error);
+        // Fall through to regular completion flow
+      }
+    } else {
+      console.log('⚠️  NOT focused mode, showing regular completion');
+    }
 
     // Get incorrect questions for summary
     const incorrectQuestions = useQuizStore.getState().questionResults.filter(
@@ -350,38 +536,6 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
     };
 
     setMessages((prev) => [...prev, summaryMessage]);
-
-    // Save session to database
-    if (currentUser && selectedTestVersion && selectedMode) {
-      const sessionData = {
-        user_id: currentUser.id,
-        test_version: selectedTestVersion,
-        mode: selectedMode,
-        correct_count: correctCount,
-        partial_count: partialCount,
-        incorrect_count: incorrectCount,
-        total_questions_asked: totalQuestionsAsked,
-        session_status: status,
-        completed_at: new Date().toISOString(),
-        question_results: useQuizStore.getState().questionResults,
-      };
-
-      await saveSessionToDb(sessionData);
-
-      // Update user record - clear session_status and update best score
-      const bestScore = Math.max(currentUser.best_score || 0, correctCount);
-      await updateUser({
-        session_status: undefined, // Clear session status
-        best_score: bestScore,
-        last_session_date: new Date().toISOString(),
-        completed: true,
-        current_question: 0,
-        correct_count: 0,
-        partial_count: 0,
-        incorrect_count: 0,
-        question_results: [],
-      });
-    }
 
     // Reset in-memory quiz state
     useQuizStore.getState().resetQuiz();
@@ -488,13 +642,9 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Header />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.container}>
         {/* Compact Header - No Partial Counter */}
         <View style={styles.header}>
           <View style={styles.statsRow}>
@@ -509,7 +659,7 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
           </View>
         </View>
 
-        {/* Chat Messages - ScrollView only (no input inside) */}
+        {/* Chat Messages - ScrollView with flex: 1 to shrink when keyboard appears */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.chatContainer}
@@ -557,6 +707,18 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
               editable={!isLoading}
               returnKeyType="default"
               blurOnSubmit={false}
+              onFocus={handleInputFocus}
+              onKeyPress={(e) => {
+                // Handle Enter key press (Shift+Enter for new line)
+                if (e.nativeEvent.key === 'Enter') {
+                  // On web, check if shift is held (allows Shift+Enter for newlines)
+                  const isShiftHeld = (e as any).shiftKey;
+                  if (!isShiftHeld) {
+                    e.preventDefault();
+                    handleButtonPress();
+                  }
+                }
+              }}
             />
             <TouchableOpacity
               style={[
@@ -585,7 +747,7 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
           onClose={() => setShowUpgradeModal(false)}
           onUpgrade={handleUpgradeConfirm}
         />
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };

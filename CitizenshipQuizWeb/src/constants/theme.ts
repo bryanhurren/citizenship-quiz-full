@@ -50,7 +50,7 @@ export const FontSizes = {
   xs: 11,
   sm: 12,
   md: 13,
-  base: 14,
+  base: 16, // Changed from 14 to 16 to prevent iOS zoom on input focus
   lg: 16,
   xl: 18,
   '2xl': 24,

@@ -11,10 +11,11 @@ import { useNavigation } from '@react-navigation/native';
 import { Button, ModeOptionCard, WelcomeModal, Header } from '../components';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
-import { TestVersion, QuizMode, Question } from '../types';
+import { TestVersion, QuizMode, Question, StudyMode } from '../types';
 import { allQuestions } from '../data/questions';
 import { allQuestions2025 } from '../data/questions-2025';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getProgressStats, getUser } from '../services/supabase';
 
 // Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -29,16 +30,24 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export const ModeSelectionScreen = () => {
   const navigation = useNavigation();
   const currentUser = useQuizStore((state) => state.currentUser);
+  const setCurrentUser = useQuizStore((state) => state.setCurrentUser);
   const setSelectedTestVersion = useQuizStore((state) => state.setSelectedTestVersion);
   const setSelectedMode = useQuizStore((state) => state.setSelectedMode);
+  const setStudyMode = useQuizStore((state) => state.setStudyMode);
   const setShuffledQuestions = useQuizStore((state) => state.setShuffledQuestions);
   const setCurrentQuestion = useQuizStore((state) => state.setCurrentQuestion);
   const loadSession = useQuizStore((state) => state.loadSession);
   const resetQuiz = useQuizStore((state) => state.resetQuiz);
+  const getQuestionsForSession = useQuizStore((state) => state.getQuestionsForSession);
 
   const [testVersion, setTestVersion] = useState<TestVersion | null>(null);
   const [mode, setMode] = useState<QuizMode | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [studyMode, setStudyModeLocal] = useState<StudyMode>('random');
+  const [focusedModeAvailable, setFocusedModeAvailable] = useState({
+    '2008': false,
+    '2025': false
+  });
 
   // Check for new user flag and show welcome modal
   React.useEffect(() => {
@@ -53,11 +62,39 @@ export const ModeSelectionScreen = () => {
     checkNewUser();
   }, []);
 
+  // Check if focused mode is available for each test version
+  React.useEffect(() => {
+    const checkFocusedAvailability = async () => {
+      if (!currentUser) return;
+
+      try {
+        const stats2008 = await getProgressStats(currentUser.username, '2008');
+        const stats2025 = await getProgressStats(currentUser.username, '2025');
+
+        setFocusedModeAvailable({
+          '2008': stats2008.totalIncorrect > 0,
+          '2025': stats2025.totalIncorrect > 0
+        });
+      } catch (error) {
+        console.error('Error checking focused mode availability:', error);
+      }
+    };
+
+    checkFocusedAvailability();
+  }, [currentUser]);
+
+  // Smart default: Auto-select focused if available
+  React.useEffect(() => {
+    if (testVersion && focusedModeAvailable[testVersion]) {
+      setStudyModeLocal('focused');
+    }
+  }, [testVersion, focusedModeAvailable]);
+
   // REMOVED: Auto-resume logic
   // Users should explicitly choose to "Resume Session" from the Profile screen
   // or "Start New Quiz" from this screen. Auto-resuming on tab navigation is confusing.
 
-  const handleStartQuiz = () => {
+  const handleStartQuiz = async () => {
     // Check if user is logged in
     if (!currentUser) {
       Alert.alert(
@@ -124,17 +161,48 @@ export const ModeSelectionScreen = () => {
       return;
     }
 
+    // Refresh user data from database to get latest progress for focused mode
+    let userForQuestions = currentUser;
+    if (studyMode === 'focused') {
+      try {
+        const freshUser = await getUser(currentUser.username);
+        if (freshUser) {
+          setCurrentUser(freshUser);
+          userForQuestions = freshUser;
+        }
+      } catch (error) {
+        console.error('Error refreshing user data:', error);
+        // Continue with cached data
+      }
+    }
+
     // Reset quiz state for new session (must be done first)
     resetQuiz();
 
     // Set selections in store
     setSelectedTestVersion(testVersion);
     setSelectedMode(mode);
+    setStudyMode(studyMode);
 
-    // Load and shuffle questions based on test version
-    const questions = testVersion === '2025' ? allQuestions2025 : allQuestions;
-    const shuffled = shuffleArray(questions);
-    setShuffledQuestions(shuffled);
+    // Get questions using the store's helper function
+    try {
+      const shuffled = getQuestionsForSession(
+        studyMode,
+        testVersion,
+        userForQuestions,
+        allQuestions,
+        allQuestions2025
+      );
+      setShuffledQuestions(shuffled);
+    } catch (error) {
+      // Handle "No questions to review" error
+      Alert.alert(
+        'No Questions to Review',
+        'You have answered all questions correctly! Start a random quiz to practice more.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     // Navigate to quiz
     navigation.navigate('Quiz' as never);
@@ -165,6 +233,47 @@ export const ModeSelectionScreen = () => {
           description="Pass by getting 12 correct (or fail with 9 incorrect) out of up to 20 questions"
           selected={testVersion === '2025'}
           onPress={() => setTestVersion('2025')}
+        />
+      </View>
+
+      {/* Study Mode Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Study Mode</Text>
+        <Text style={styles.sectionDescription}>
+          Choose how questions are selected:
+        </Text>
+
+        <ModeOptionCard
+          title="Random Selection"
+          description="Practice with all questions in random order. Prioritizes questions you haven't seen yet."
+          selected={studyMode === 'random'}
+          onPress={() => setStudyModeLocal('random')}
+        />
+
+        <ModeOptionCard
+          title="Focused Mode"
+          description={
+            testVersion && focusedModeAvailable[testVersion]
+              ? "Focus on questions you've answered incorrectly or partially correct."
+              : "Focus on questions you've answered incorrectly. (No incorrect questions yet)"
+          }
+          selected={studyMode === 'focused'}
+          onPress={() => {
+            if (!testVersion) {
+              Alert.alert('Select Test Version', 'Please select a test version first.');
+              return;
+            }
+            if (!focusedModeAvailable[testVersion]) {
+              Alert.alert(
+                'No Questions to Review',
+                'You need to answer some questions incorrectly first to use Focused Mode. Try a random quiz!',
+                [{ text: 'OK' }]
+              );
+              return;
+            }
+            setStudyModeLocal('focused');
+          }}
+          disabled={testVersion ? !focusedModeAvailable[testVersion] : false}
         />
       </View>
 

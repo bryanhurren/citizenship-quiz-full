@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - US Citizenship Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #667eea;
+            margin: 30px 0 15px 0;
+            font-size: 20px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn.secondary {
+            background: #999;
+        }
+
+        .btn.danger {
+            background: #f44336;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .code-list,
+        .user-list {
+            margin: 20px 0;
+        }
+
+        .code-item,
+        .user-item {
+            background: #f5f5f5;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-item.used {
+            background: #e0e0e0;
+            opacity: 0.6;
+        }
+
+        .code {
+            font-family: monospace;
+            font-weight: 700;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status.available {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status.used {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .admin-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .logout-btn {
+            float: right;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Email column styling for text overflow */
+        td:first-child {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Make email column responsive to window size */
+        @media (min-width: 768px) {
+            td:first-child {
+                max-width: 250px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            td:first-child {
+                max-width: 300px;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            td:first-child {
+                max-width: 350px;
+            }
+        }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+            color: #667eea;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div class="screen active" id="loginScreen">
+            <h1>Admin Login</h1>
+            <div class="form-group">
+                <label for="adminUsernameOrEmail">Username or Email:</label>
+                <input type="text" id="adminUsernameOrEmail" placeholder="Enter username or email">
+            </div>
+            <div class="form-group">
+                <label for="adminPassword">Password:</label>
+                <input type="password" id="adminPassword" placeholder="Enter password">
+            </div>
+            <button class="btn" onclick="adminLogin()">Login</button>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div class="screen" id="dashboardScreen">
+            <h1>Admin Dashboard
+                <button class="btn secondary logout-btn" onclick="logout()">Logout</button>
+            </h1>
+
+            <h2>All Admins</h2>
+            <div id="adminList"></div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn" onclick="showCreateAdminScreen()" style="padding: 12px 24px;">+ Create New Admin</button>
+            </div>
+
+            <h2>All Users</h2>
+            <div id="userList" class="user-list"></div>
+        </div>
+
+        <!-- User Details Screen -->
+        <div class="screen" id="userDetailsScreen">
+            <h1>
+                <button class="btn secondary" onclick="backToUserList()" style="margin-right: 20px;">← Back</button>
+                User Details
+                <button class="btn secondary logout-btn" onclick="logout()">Logout</button>
+            </h1>
+            <div id="userDetailsContent"></div>
+        </div>
+
+        <!-- Create Admin Screen -->
+        <div class="screen" id="createAdminScreen">
+            <h1>
+                <button class="btn secondary" onclick="backToDashboard()" style="margin-right: 20px;">← Back</button>
+                Create New Admin
+                <button class="btn secondary logout-btn" onclick="logout()">Logout</button>
+            </h1>
+
+            <div style="max-width: 600px; margin: 0 auto;">
+                <div class="form-group">
+                    <label for="newAdminUsername">Username:</label>
+                    <input type="text" id="newAdminUsername" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="newAdminEmail">Email: <span style="color: red;">*</span></label>
+                    <input type="email" id="newAdminEmail" placeholder="admin@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="newAdminPassword">Password:</label>
+                    <input type="password" id="newAdminPassword" placeholder="Enter password" required>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="newAdminAlerts">
+                        <span>Receive alert emails (errors, system issues)</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="newAdminReports">
+                        <span>Receive daily operations reports</span>
+                    </label>
+                </div>
+                <button class="btn" onclick="createAdmin()" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 10px;">Create Admin</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://calexrqhodjgxlojokbb.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGV4cnFob2RqZ3hsb2pva2JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MjMwNDEsImV4cCI6MjA3NjE5OTA0MX0.b7zkaCz7IQ53yeR7LgfMsPq3C6NHZi5Swr-PSMuN-is';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Admin login with Supabase
+        async function adminLogin() {
+            const usernameOrEmail = document.getElementById('adminUsernameOrEmail').value.trim();
+            const password = document.getElementById('adminPassword').value;
+
+            if (!usernameOrEmail || !password) {
+                alert('Please enter username/email and password');
+                return;
+            }
+
+            try {
+                // Try to find admin by username OR email
+                const { data: admins, error } = await supabase
+                    .from('admin_users')
+                    .select('*')
+                    .or(`username.eq.${usernameOrEmail},email.eq.${usernameOrEmail}`)
+                    .eq('password', password)
+                    .limit(1);
+
+                if (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed: ' + error.message);
+                    return;
+                }
+
+                if (!admins || admins.length === 0) {
+                    alert('Invalid credentials');
+                    return;
+                }
+
+                const admin = admins[0];
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                sessionStorage.setItem('adminUsername', admin.username);
+                sessionStorage.setItem('adminEmail', admin.email || '');
+                sessionStorage.setItem('adminId', admin.id);
+                showDashboard();
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed');
+            }
+        }
+
+        // Show dashboard
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+            document.getElementById('userDetailsScreen').classList.remove('active');
+            document.getElementById('createAdminScreen').classList.remove('active');
+            loadAdmins();
+            loadUsers();
+        }
+
+        function showCreateAdminScreen() {
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('createAdminScreen').classList.add('active');
+        }
+
+        function backToDashboard() {
+            document.getElementById('createAdminScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+        }
+
+        // Create admin in Supabase
+        async function createAdmin() {
+            const username = document.getElementById('newAdminUsername').value.trim();
+            const email = document.getElementById('newAdminEmail').value.trim();
+            const password = document.getElementById('newAdminPassword').value.trim();
+            const receiveAlerts = document.getElementById('newAdminAlerts').checked;
+            const receiveReports = document.getElementById('newAdminReports').checked;
+
+            if (!username || !email || !password) {
+                alert('Username, email, and password are required');
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('admin_users')
+                    .insert([{
+                        username,
+                        email,
+                        password,
+                        receive_alerts: receiveAlerts,
+                        receive_daily_reports: receiveReports,
+                        created_by: sessionStorage.getItem('adminUsername')
+                    }]);
+
+                if (error) {
+                    console.error('Error creating admin:', error);
+                    alert('Error creating admin: ' + error.message);
+                    return;
+                }
+
+                // Clear form
+                document.getElementById('newAdminUsername').value = '';
+                document.getElementById('newAdminEmail').value = '';
+                document.getElementById('newAdminPassword').value = '';
+                document.getElementById('newAdminAlerts').checked = false;
+                document.getElementById('newAdminReports').checked = false;
+
+                alert('Admin created successfully!');
+
+                // Navigate back to dashboard and reload admin list
+                backToDashboard();
+                loadAdmins();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating admin');
+            }
+        }
+
+        // Load admins from Supabase
+        async function loadAdmins() {
+            try {
+                const { data: admins, error } = await supabase
+                    .from('admin_users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error loading admins:', error);
+                    document.getElementById('adminList').innerHTML = '<p style="color: #f44336;">Error loading admins</p>';
+                    return;
+                }
+
+                const adminList = document.getElementById('adminList');
+
+                if (!admins || admins.length === 0) {
+                    adminList.innerHTML = '<p style="color: #999;">No admins found.</p>';
+                    return;
+                }
+
+                adminList.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Alerts</th>
+                                <th>Reports</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${admins.map(a => `
+                                <tr>
+                                    <td>${a.username} ${a.username === 'master' ? '<span class="admin-badge">MASTER</span>' : ''}</td>
+                                    <td>${a.email || '<span style="color: #999;">Not set</span>'}</td>
+                                    <td>${a.receive_alerts ? '<span style="color: #22c55e;">✓ Yes</span>' : '<span style="color: #999;">No</span>'}</td>
+                                    <td>${a.receive_daily_reports ? '<span style="color: #22c55e;">✓ Yes</span>' : '<span style="color: #999;">No</span>'}</td>
+                                    <td>${a.created_at ? new Date(a.created_at).toLocaleDateString() : 'Unknown'}</td>
+                                    <td>
+                                        <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick='editAdmin(${JSON.stringify(a)})'>Edit</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('adminList').innerHTML = '<p style="color: #f44336;">Error loading admins</p>';
+            }
+        }
+
+        // Edit admin - populate modal
+        let currentEditingAdmin = null;
+        function editAdmin(admin) {
+            currentEditingAdmin = admin;
+
+            // Show prompt-based edit for now (can be upgraded to modal later)
+            const newEmail = prompt(`Edit email for ${admin.username}:`, admin.email || '');
+            if (newEmail === null) return; // Cancelled
+
+            const receiveAlerts = confirm(`Receive alert emails?\n\nCurrent: ${admin.receive_alerts ? 'Yes' : 'No'}`);
+            const receiveReports = confirm(`Receive daily reports?\n\nCurrent: ${admin.receive_daily_reports ? 'Yes' : 'No'}`);
+
+            updateAdmin(admin.username, {
+                email: newEmail,
+                receive_alerts: receiveAlerts,
+                receive_daily_reports: receiveReports
+            });
+        }
+
+        // Update admin in Supabase
+        async function updateAdmin(username, updates) {
+            try {
+                const { error } = await supabase
+                    .from('admin_users')
+                    .update(updates)
+                    .eq('username', username);
+
+                if (error) {
+                    alert('Error updating admin: ' + error.message);
+                    return;
+                }
+
+                alert(`Admin ${username} updated successfully!`);
+                loadAdmins();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating admin');
+            }
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                // Load from Supabase database
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error loading users:', error);
+                    document.getElementById('userList').innerHTML = '<p style="color: #f44336;">Error loading users from database</p>';
+                    return;
+                }
+
+                const userList = document.getElementById('userList');
+
+                if (!users || users.length === 0) {
+                    userList.innerHTML = '<p style="color: #999;">No users registered yet.</p>';
+                    return;
+                }
+
+                userList.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Subscription</th>
+                                <th>Created</th>
+                                <th>Last Session</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${users.map((u) => {
+                                const isPremium = u.subscription_tier === 'premium';
+                                const isExpired = isPremium && u.subscription_expires_at && new Date(u.subscription_expires_at) < new Date();
+                                const expiresText = isPremium && u.subscription_expires_at
+                                    ? `Expires: ${new Date(u.subscription_expires_at).toLocaleDateString()}`
+                                    : '';
+
+                                return `
+                                <tr>
+                                    <td title="${u.username}"><a href="#" onclick="showUserDetails('${u.username}'); return false;" style="color: #667eea; text-decoration: none; font-weight: 600;">${u.username}</a></td>
+                                    <td>
+                                        <span style="color: ${isPremium && !isExpired ? '#22c55e' : '#666'}; font-weight: 600;">
+                                            ${isPremium && !isExpired ? '🏆 Premium' : 'Free'}
+                                        </span>
+                                        ${expiresText ? `<br><span style="font-size: 11px; color: ${isExpired ? '#f44336' : '#666'};">${expiresText}</span>` : ''}
+                                    </td>
+                                    <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Unknown'}</td>
+                                    <td>${u.last_session_date ? new Date(u.last_session_date).toLocaleString() : 'Never'}</td>
+                                    <td>
+                                        ${!isPremium || isExpired ? `
+                                            <button class="btn" style="padding: 6px 12px; font-size: 12px; margin-right: 5px;" onclick="upgradeToPremium('${u.username}')">Upgrade</button>
+                                        ` : ''}
+                                        <button class="btn danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteUser('${u.username}')">Delete</button>
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('userList').innerHTML = '<p style="color: #f44336;">Error loading users</p>';
+            }
+        }
+
+        // Reset user password
+        function resetPassword(username) {
+            const newPassword = prompt(`Enter new password for ${username}:`);
+            if (newPassword) {
+                const users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+                const user = users.find(u => u.name === username);
+                if (user) {
+                    user.password = newPassword;
+                    localStorage.setItem('quizUsers', JSON.stringify(users));
+
+                    // Also update admin password if user is admin
+                    const admins = JSON.parse(localStorage.getItem('quizAdmins') || '[]');
+                    const admin = admins.find(a => a.username === username);
+                    if (admin) {
+                        admin.password = newPassword;
+                        localStorage.setItem('quizAdmins', JSON.stringify(admins));
+                    }
+
+                    loadUsers();
+                    loadAdmins();
+                    alert('Password updated successfully');
+                }
+            }
+        }
+
+        // Delete user
+        async function deleteUser(username) {
+            if (confirm(`Are you sure you want to delete user "${username}"? This will permanently delete all their data including quiz progress. This cannot be undone.`)) {
+                try {
+                    // Delete from Supabase database
+                    const { error } = await supabase
+                        .from('users')
+                        .delete()
+                        .eq('username', username);
+
+                    if (error) {
+                        console.error('Error deleting user from database:', error);
+                        alert('Error deleting user from database: ' + error.message);
+                        return;
+                    }
+
+                    // Also delete from localStorage for backwards compatibility
+                    let users = JSON.parse(localStorage.getItem('quizUsers') || '[]');
+                    users = users.filter(u => u.name !== username);
+                    localStorage.setItem('quizUsers', JSON.stringify(users));
+
+                    // If we're on the user details screen, navigate back to user list
+                    if (document.getElementById('userDetailsScreen').classList.contains('active')) {
+                        backToUserList();
+                    } else {
+                        loadUsers();
+                    }
+
+                    alert('User deleted successfully from database');
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting user: ' + error.message);
+                }
+            }
+        }
+
+        // Upgrade user to premium
+        async function upgradeToPremium(username) {
+            const weeks = prompt(`How many weeks of premium access for ${username}?`, '4');
+            if (!weeks || isNaN(weeks) || weeks <= 0) {
+                if (weeks !== null) {
+                    alert('Please enter a valid number of weeks');
+                }
+                return;
+            }
+
+            try {
+                // Calculate expiration date
+                const expirationDate = new Date();
+                expirationDate.setDate(expirationDate.getDate() + (parseInt(weeks) * 7));
+
+                // Update user in database
+                const { error } = await supabase
+                    .from('users')
+                    .update({
+                        subscription_tier: 'premium',
+                        subscription_expires_at: expirationDate.toISOString()
+                    })
+                    .eq('username', username);
+
+                if (error) {
+                    console.error('Error upgrading user:', error);
+                    alert('Error upgrading user: ' + error.message);
+                    return;
+                }
+
+                loadUsers();
+                alert(`User ${username} has been upgraded to Premium for ${weeks} week(s) (expires ${expirationDate.toLocaleDateString()})`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error upgrading user: ' + error.message);
+            }
+        }
+
+        // Show user details
+        async function showUserDetails(username) {
+            try {
+                // Load user from Supabase database
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username);
+
+                if (error || !users || users.length === 0) {
+                    alert('Error loading user details');
+                    return;
+                }
+
+                const user = users[0];
+                const isPremium = user.subscription_tier === 'premium';
+                const isExpired = isPremium && user.subscription_expires_at && new Date(user.subscription_expires_at) < new Date();
+
+                const detailsContent = document.getElementById('userDetailsContent');
+                detailsContent.innerHTML = `
+                    <div class="info-box" style="background: #f5f5f5; margin-bottom: 30px;">
+                        <h2 style="margin: 0 0 10px 0; color: #667eea;">${user.username}</h2>
+                        <p style="margin: 5px 0;">
+                            <strong>Account Created:</strong> ${user.created_at ? new Date(user.created_at).toLocaleString() : 'Unknown'}
+                        </p>
+                        <p style="margin: 5px 0;">
+                            <strong>Subscription:</strong>
+                            <span style="color: ${isPremium && !isExpired ? '#22c55e' : '#666'}; font-weight: 600;">
+                                ${isPremium && !isExpired ? '🏆 Premium' : 'Free'}
+                            </span>
+                            ${isPremium && user.subscription_expires_at ? `<br><span style="font-size: 12px; color: ${isExpired ? '#f44336' : '#666'};">Expires: ${new Date(user.subscription_expires_at).toLocaleString()}</span>` : ''}
+                        </p>
+                    </div>
+
+                    <h2>Quiz Progress</h2>
+                    <table style="margin-bottom: 30px;">
+                        <tbody>
+                            <tr>
+                                <td><strong>Current Question</strong></td>
+                                <td>${user.current_question || 0}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Progress</strong></td>
+                                <td>
+                                    <span style="color: #22c55e; font-weight: 600;">${user.correct_count || 0} Correct</span> /
+                                    <span style="color: #f59e0b; font-weight: 600;">${user.partial_count || 0} Partial</span> /
+                                    <span style="color: #ef4444; font-weight: 600;">${user.incorrect_count || 0} Incorrect</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Test Version</strong></td>
+                                <td>${user.test_version || 'Not Started'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mode</strong></td>
+                                <td style="text-transform: capitalize;">${user.mode || 'Not Selected'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Best Score</strong></td>
+                                <td>${user.best_score || 0}/${user.test_version === '2025' ? 128 : 100}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Completed</strong></td>
+                                <td>${user.completed ? '<span style="color: #22c55e; font-weight: 600;">✓ Yes</span>' : '<span style="color: #f59e0b;">In Progress</span>'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Session</strong></td>
+                                <td>${user.last_session_date ? new Date(user.last_session_date).toLocaleString() : 'Never'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2>Actions</h2>
+                    <div style="display: flex; gap: 10px;">
+                        ${!isPremium || isExpired ? `
+                            <button class="btn" onclick="upgradeToPremium('${user.username}')">Upgrade to Premium</button>
+                        ` : ''}
+                        <button class="btn danger" onclick="deleteUser('${user.username}')">Delete User</button>
+                    </div>
+                `;
+
+                // Switch to user details screen
+                document.getElementById('dashboardScreen').classList.remove('active');
+                document.getElementById('userDetailsScreen').classList.add('active');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading user details');
+            }
+        }
+
+        // Back to user list
+        function backToUserList() {
+            document.getElementById('userDetailsScreen').classList.remove('active');
+            document.getElementById('dashboardScreen').classList.add('active');
+            loadUsers(); // Refresh user list in case anything changed
+        }
+
+        // Logout
+        function logout() {
+            sessionStorage.removeItem('adminLoggedIn');
+            sessionStorage.removeItem('adminUsername');
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('userDetailsScreen').classList.remove('active');
+            document.getElementById('loginScreen').classList.add('active');
+            document.getElementById('adminPassword').value = '';
+        }
+
+        // Check if already logged in
+        if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+            showDashboard();
+        }
+    </script>
+</body>
+</html>

@@ -7,6 +7,7 @@ interface ModeOptionCardProps {
   description: string;
   onPress: () => void;
   selected?: boolean;
+  disabled?: boolean;
   style?: ViewStyle;
 }
 
@@ -15,6 +16,7 @@ export const ModeOptionCard: React.FC<ModeOptionCardProps> = ({
   description,
   onPress,
   selected = false,
+  disabled = false,
   style,
 }) => {
   return (
@@ -22,10 +24,12 @@ export const ModeOptionCard: React.FC<ModeOptionCardProps> = ({
       style={[
         styles.card,
         selected && styles.selectedCard,
+        disabled && styles.disabledCard,
         style,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
+      disabled={disabled}
     >
       <View style={styles.contentContainer}>
         <View style={styles.radioContainer}>
@@ -103,5 +107,9 @@ const styles = StyleSheet.create({
   selectedDescription: {
     color: Colors.white,
     opacity: 0.9,
+  },
+  disabledCard: {
+    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
   },
 });
