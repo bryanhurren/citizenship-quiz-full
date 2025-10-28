@@ -99,10 +99,10 @@ export const PastSessionsScreen = () => {
                 const maxQuestions = session.test_version === '2025' ? 20 : 10;
                 const passThreshold = session.test_version === '2025' ? 12 : 6;
 
-                // For focused mode, show as "complete" with neutral/positive color
+                // For focused mode, show as "done" with neutral/positive color
                 const isFocusedMode = session.study_mode === 'focused';
                 const sessionPassed = isFocusedMode ? true : session.correct_count >= passThreshold;
-                const statusText = isFocusedMode ? 'COMPLETE' : (session.session_status === 'passed' ? 'PASS' : 'FAIL');
+                const statusText = isFocusedMode ? 'DONE' : (session.session_status === 'passed' ? 'PASS' : 'FAIL');
 
                 return (
                   <View key={session.id} style={styles.tableRow}>

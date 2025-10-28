@@ -1,11 +1,8 @@
 import { EvaluationResponse, QuizMode } from '../types';
 
 // API Configuration
-// Temporarily using production URL for testing on physical device
-const API_URL = 'https://claude-test-hlcqzyuqn-bryan-hs-projects-3bca947e.vercel.app'; // Production
-// const API_URL = __DEV__
-//   ? 'http://localhost:3000'  // Local development
-//   : 'https://claude-test-hlcqzyuqn-bryan-hs-projects-3bca947e.vercel.app'; // Production
+// Use production domain (automatically routes to latest deployment)
+const API_URL = 'https://www.theeclodapps.com';
 
 export const evaluateAnswer = async (
   question: string,
@@ -14,6 +11,8 @@ export const evaluateAnswer = async (
   mode: QuizMode
 ): Promise<EvaluationResponse | null> => {
   try {
+    console.log('Evaluating answer via API:', { question, userAnswer });
+
     const response = await fetch(`${API_URL}/api/evaluate`, {
       method: 'POST',
       headers: {
@@ -27,10 +26,25 @@ export const evaluateAnswer = async (
       }),
     });
 
+    console.log('API response status:', response.status);
+
+    if (!response.ok) {
+      console.error('API response not OK:', response.status, response.statusText);
+      return null;
+    }
+
     const data = await response.json();
+    console.log('API response data:', data);
 
     if (data.error) {
       console.error('API Error:', data.error);
+      // If the error response includes grade and feedback, use it
+      if (data.grade && data.feedback) {
+        return {
+          grade: data.grade,
+          feedback: data.feedback
+        };
+      }
       return null;
     }
 
@@ -48,6 +62,7 @@ export const evaluateAnswer = async (
     // Ensure we have valid grade and feedback fields
     if (!evaluation.grade || !evaluation.feedback) {
       console.error('Invalid evaluation response:', evaluation);
+      console.error('Full response data:', JSON.stringify(data, null, 2));
       return null;
     }
 

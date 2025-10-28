@@ -318,6 +318,10 @@ export const QuizScreen = () => {
   const checkSessionStatus = () => {
     // FOCUSED MODE: Session complete when all questions answered
     if (studyMode === 'focused') {
+      // Guard against empty question sets (e.g., after progress reset)
+      if (shuffledQuestions.length === 0) {
+        return null; // No questions to practice, session shouldn't complete
+      }
       if (totalQuestionsAsked >= shuffledQuestions.length) {
         return 'passed'; // Focused mode always "passes" (just practice)
       }

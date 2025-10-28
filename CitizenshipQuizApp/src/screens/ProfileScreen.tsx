@@ -936,38 +936,45 @@ export const ProfileScreen = () => {
               <View style={styles.progressHeader}>
                 <Text style={styles.progressLabel}>2008 Test Progress</Text>
                 {progress2008.totalCorrect === progress2008.totalQuestions && (
-                  <View style={styles.perfectBadge}>
-                    <Text style={styles.perfectBadgeText}>Perfect Score</Text>
-                  </View>
+                  <TouchableOpacity onPress={() => handleResetProgress('2008')}>
+                    <Text style={styles.resetLinkText}>reset progress</Text>
+                  </TouchableOpacity>
                 )}
               </View>
 
               {/* Progress Bar */}
-              <View style={styles.progressBar}>
-                {/* Correct (Green) */}
-                <View
-                  style={[
-                    styles.progressSegment,
-                    styles.progressCorrect,
-                    { width: `${(progress2008.totalCorrect / progress2008.totalQuestions) * 100}%` }
-                  ]}
-                />
-                {/* Attempted but incorrect (Yellow) */}
-                <View
-                  style={[
-                    styles.progressSegment,
-                    styles.progressAttempted,
-                    { width: `${(progress2008.totalIncorrect / progress2008.totalQuestions) * 100}%` }
-                  ]}
-                />
-                {/* Remaining (Gray) */}
-                <View
-                  style={[
-                    styles.progressSegment,
-                    styles.progressRemaining,
-                    { width: `${((progress2008.totalQuestions - progress2008.totalAsked) / progress2008.totalQuestions) * 100}%` }
-                  ]}
-                />
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBar}>
+                  {/* Correct (Green) */}
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      styles.progressCorrect,
+                      { width: `${(progress2008.totalCorrect / progress2008.totalQuestions) * 100}%` }
+                    ]}
+                  />
+                  {/* Attempted but incorrect (Yellow) */}
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      styles.progressAttempted,
+                      { width: `${(progress2008.totalIncorrect / progress2008.totalQuestions) * 100}%` }
+                    ]}
+                  />
+                  {/* Remaining (Gray) */}
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      styles.progressRemaining,
+                      { width: `${((progress2008.totalQuestions - progress2008.totalAsked) / progress2008.totalQuestions) * 100}%` }
+                    ]}
+                  />
+                </View>
+                {progress2008.totalCorrect === progress2008.totalQuestions && (
+                  <View style={styles.perfectScoreContainer}>
+                    <Text style={styles.perfectScoreText}>Perfect Score</Text>
+                  </View>
+                )}
               </View>
 
               {/* Stats */}
@@ -982,16 +989,6 @@ export const ProfileScreen = () => {
                   {progress2008.totalQuestions - progress2008.totalAsked} remaining
                 </Text>
               </View>
-
-              {/* Reset Button (if all mastered) */}
-              {progress2008.totalCorrect === progress2008.totalQuestions && (
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={() => handleResetProgress('2008')}
-                >
-                  <Text style={styles.resetButtonText}>Reset Progress</Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
 
@@ -1001,34 +998,41 @@ export const ProfileScreen = () => {
               <View style={styles.progressHeader}>
                 <Text style={styles.progressLabel}>2025 Test Progress</Text>
                 {progress2025.totalCorrect === progress2025.totalQuestions && (
-                  <View style={styles.perfectBadge}>
-                    <Text style={styles.perfectBadgeText}>Perfect Score</Text>
-                  </View>
+                  <TouchableOpacity onPress={() => handleResetProgress('2025')}>
+                    <Text style={styles.resetLinkText}>reset progress</Text>
+                  </TouchableOpacity>
                 )}
               </View>
 
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressSegment,
-                    styles.progressCorrect,
-                    { width: `${(progress2025.totalCorrect / progress2025.totalQuestions) * 100}%` }
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    styles.progressAttempted,
-                    { width: `${(progress2025.totalIncorrect / progress2025.totalQuestions) * 100}%` }
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.progressSegment,
-                    styles.progressRemaining,
-                    { width: `${((progress2025.totalQuestions - progress2025.totalAsked) / progress2025.totalQuestions) * 100}%` }
-                  ]}
-                />
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      styles.progressCorrect,
+                      { width: `${(progress2025.totalCorrect / progress2025.totalQuestions) * 100}%` }
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      styles.progressAttempted,
+                      { width: `${(progress2025.totalIncorrect / progress2025.totalQuestions) * 100}%` }
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressSegment,
+                      styles.progressRemaining,
+                      { width: `${((progress2025.totalQuestions - progress2025.totalAsked) / progress2025.totalQuestions) * 100}%` }
+                    ]}
+                  />
+                </View>
+                {progress2025.totalCorrect === progress2025.totalQuestions && (
+                  <View style={styles.perfectScoreContainer}>
+                    <Text style={styles.perfectScoreText}>Perfect Score</Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.statsRow}>
@@ -1042,15 +1046,6 @@ export const ProfileScreen = () => {
                   {progress2025.totalQuestions - progress2025.totalAsked} remaining
                 </Text>
               </View>
-
-              {progress2025.totalCorrect === progress2025.totalQuestions && (
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={() => handleResetProgress('2025')}
-                >
-                  <Text style={styles.resetButtonText}>Reset Progress</Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
         </View>
@@ -1144,7 +1139,11 @@ export const ProfileScreen = () => {
                 {pastSessions.slice(0, 5).map((session) => {
                   const maxQuestions = session.test_version === '2025' ? 20 : 10;
                   const passThreshold = session.test_version === '2025' ? 12 : 6;
-                  const sessionPassed = session.correct_count >= passThreshold;
+
+                  // For focused mode, show as "done" with green color
+                  const isFocusedMode = session.study_mode === 'focused';
+                  const sessionPassed = isFocusedMode ? true : session.correct_count >= passThreshold;
+                  const statusText = isFocusedMode ? 'DONE' : (session.session_status === 'passed' ? 'PASS' : 'FAIL');
 
                   return (
                     <View key={session.id} style={styles.tableRow}>
@@ -1162,7 +1161,7 @@ export const ProfileScreen = () => {
                         ]}
                         numberOfLines={1}
                       >
-                        {session.session_status === 'passed' ? 'PASS' : 'FAIL'}
+                        {statusText}
                       </Text>
                     </View>
                   );
@@ -1689,16 +1688,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
   },
-  perfectBadge: {
-    backgroundColor: Colors.correct,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  perfectBadgeText: {
-    color: 'white',
+  resetLinkText: {
     fontSize: FontSizes.sm,
-    fontWeight: '600',
+    color: Colors.primary,
+    textDecorationLine: 'underline',
+  },
+  progressBarContainer: {
+    position: 'relative',
+    marginBottom: Spacing.sm,
   },
   progressBar: {
     height: 24,
@@ -1706,7 +1703,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     flexDirection: 'row',
     overflow: 'hidden',
-    marginBottom: Spacing.sm,
   },
   progressSegment: {
     height: '100%',
@@ -1720,6 +1716,20 @@ const styles = StyleSheet.create({
   progressRemaining: {
     backgroundColor: '#e5e7eb',
   },
+  perfectScoreContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  perfectScoreText: {
+    color: 'white',
+    fontSize: FontSizes.xs,
+    fontWeight: '600',
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1727,18 +1737,5 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: FontSizes.sm,
     color: '#6b7280',
-  },
-  resetButton: {
-    marginTop: Spacing.md,
-    backgroundColor: '#ef4444',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    color: 'white',
-    fontSize: FontSizes.sm,
-    fontWeight: '600',
   },
 });

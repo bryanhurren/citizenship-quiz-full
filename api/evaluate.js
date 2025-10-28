@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-5-20250929',
-                    max_tokens: 300,
+                    max_tokens: 800,
                     messages: [{
                         role: 'user',
                         content: mode === 'comedy'
@@ -111,6 +111,25 @@ Respond ONLY with valid JSON, no other text.`
                 return res.status(400).json({ error: JSON.stringify(data.error) });
             }
 
+            // Validate response structure
+            if (!data.content || !Array.isArray(data.content) || data.content.length === 0) {
+                console.error('Invalid API response structure:', JSON.stringify(data));
+                return res.status(500).json({
+                    error: 'Invalid response from AI',
+                    grade: 'incorrect',
+                    feedback: 'Unable to evaluate answer. Please try again.'
+                });
+            }
+
+            if (!data.content[0] || !data.content[0].text) {
+                console.error('Missing text in API response:', JSON.stringify(data));
+                return res.status(500).json({
+                    error: 'Empty response from AI',
+                    grade: 'incorrect',
+                    feedback: 'Unable to evaluate answer. Please try again.'
+                });
+            }
+
             let responseText = data.content[0].text.trim();
 
             // Remove markdown code blocks if present
@@ -164,6 +183,23 @@ Respond ONLY with valid JSON, no other text.`
                         feedback: responseText || 'Unable to evaluate answer. Please try again.'
                     };
                 }
+            }
+
+            // Final validation: ensure we have valid grade and feedback
+            if (!evaluation || !evaluation.grade || !evaluation.feedback) {
+                console.error('Invalid evaluation object:', evaluation);
+                return res.status(500).json({
+                    error: 'Invalid evaluation response',
+                    grade: 'incorrect',
+                    feedback: 'Unable to evaluate answer. Please try again.'
+                });
+            }
+
+            // Validate grade is one of the expected values
+            const validGrades = ['correct', 'partial', 'incorrect'];
+            if (!validGrades.includes(evaluation.grade)) {
+                console.error('Invalid grade value:', evaluation.grade);
+                evaluation.grade = 'incorrect'; // Default to incorrect if invalid
             }
 
             return res.json(evaluation);
