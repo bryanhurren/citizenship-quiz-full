@@ -462,9 +462,10 @@ export const QuizScreen = () => {
         user_id: currentUser.id,
         test_version: selectedTestVersion,
         mode: selectedMode,
-        correct_count: correctCount,
+        study_mode: capturedStudyMode, // Save study mode (focused/random)
+        correct_count: capturedCorrectCount,
         partial_count: partialCount,
-        incorrect_count: incorrectCount,
+        incorrect_count: capturedIncorrectCount,
         total_questions_asked: totalQuestionsAsked,
         session_status: status,
         completed_at: new Date().toISOString(),

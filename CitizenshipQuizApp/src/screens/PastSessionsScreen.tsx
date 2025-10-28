@@ -10,10 +10,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useQuizStore } from '../store/quizStore';
 import { getUserSessions } from '../services/supabase';
-import { Card } from '../components';
+import { Card, Header } from '../components';
 
 interface PastSession {
-  id: number;
+  id: string;
   completed_at: string;
   correct_count: number;
   partial_count: number;
@@ -22,6 +22,7 @@ interface PastSession {
   session_status: 'passed' | 'failed';
   test_version: '2008' | '2025';
   mode: 'formal' | 'comedy';
+  study_mode?: 'random' | 'focused'; // Optional for backward compatibility
 }
 
 // Format date as MM/DD/YYYY
@@ -80,6 +81,7 @@ export const PastSessionsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <Header />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Past Sessions</Text>
 
@@ -97,7 +99,11 @@ export const PastSessionsScreen = () => {
               {pastSessions.map((session) => {
                 const maxQuestions = session.test_version === '2025' ? 20 : 10;
                 const passThreshold = session.test_version === '2025' ? 12 : 6;
-                const sessionPassed = session.correct_count >= passThreshold;
+
+                // For focused mode, show as "complete" with neutral/positive color
+                const isFocusedMode = session.study_mode === 'focused';
+                const sessionPassed = isFocusedMode ? true : session.correct_count >= passThreshold;
+                const statusText = isFocusedMode ? 'COMPLETE' : (session.session_status === 'passed' ? 'PASS' : 'FAIL');
 
                 return (
                   <View key={session.id} style={styles.tableRow}>
@@ -115,7 +121,7 @@ export const PastSessionsScreen = () => {
                       ]}
                       numberOfLines={1}
                     >
-                      {session.session_status === 'passed' ? 'PASS' : 'FAIL'}
+                      {statusText}
                     </Text>
                   </View>
                 );

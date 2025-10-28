@@ -627,7 +627,8 @@ export const QuizScreen = () => {
       const sessionData = {
         user_id: currentUser.id,
         test_version: selectedTestVersion,
-        mode: selectedMode || 'focused',
+        mode: selectedMode || 'formal',
+        study_mode: studyMode, // Save study mode (focused/random)
         correct_count: correctCount,
         incorrect_count: incorrectCount,
         total_questions_asked: totalQuestionsAsked,
@@ -707,6 +708,7 @@ ${incorrectQuestions.length > 0 ? `\n📝 Questions to Review:\n${incorrectQuest
         user_id: currentUser.id,
         test_version: selectedTestVersion,
         mode: selectedMode,
+        study_mode: studyMode || 'random', // Save study mode (focused/random)
         correct_count: correctCount,
         incorrect_count: incorrectCount,
         total_questions_asked: totalQuestionsAsked,
