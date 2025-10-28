@@ -15,7 +15,11 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/((?!_expo|assets|favicon.ico|metadata.json).*)",
+      "source": "/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/:font",
+      "destination": "/fonts/:font"
+    },
+    {
+      "source": "/((?!_expo|assets|favicon.ico|metadata.json|fonts).*)",
       "destination": "/index.html"
     }
   ]
