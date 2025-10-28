@@ -40,8 +40,8 @@ export const ModeSelectionScreen = () => {
   const resetQuiz = useQuizStore((state) => state.resetQuiz);
   const getQuestionsForSession = useQuizStore((state) => state.getQuestionsForSession);
 
-  const [testVersion, setTestVersion] = useState<TestVersion | null>(null);
-  const [mode, setMode] = useState<QuizMode | null>(null);
+  const [testVersion, setTestVersion] = useState<TestVersion | null>('2008');
+  const [mode, setMode] = useState<QuizMode | null>('formal');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [studyMode, setStudyModeLocal] = useState<StudyMode>('random');
   const [focusedModeAvailable, setFocusedModeAvailable] = useState({
@@ -83,12 +83,8 @@ export const ModeSelectionScreen = () => {
     checkFocusedAvailability();
   }, [currentUser]);
 
-  // Smart default: Auto-select focused if available
-  React.useEffect(() => {
-    if (testVersion && focusedModeAvailable[testVersion]) {
-      setStudyModeLocal('focused');
-    }
-  }, [testVersion, focusedModeAvailable]);
+  // Removed: Auto-select focused mode
+  // Always default to 'random' mode - users can explicitly choose 'focused' if they want
 
   // REMOVED: Auto-resume logic
   // Users should explicitly choose to "Resume Session" from the Profile screen
