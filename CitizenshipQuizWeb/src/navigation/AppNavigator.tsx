@@ -32,11 +32,22 @@ function SessionStackNavigator() {
 
   // Listen for tab focus and navigate to correct screen based on session status
   React.useEffect(() => {
-    if (navigationRef.current && currentUser?.session_status === 'in_progress') {
-      // If we have an active session, ensure we're on Quiz screen
-      const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
-      if (currentRoute === 'ModeSelection') {
-        navigationRef.current.navigate('Quiz');
+    if (navigationRef.current) {
+      if (currentUser?.session_status === 'in_progress') {
+        // If we have an active session, ensure we're on Quiz screen
+        const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
+        if (currentRoute === 'ModeSelection') {
+          navigationRef.current.navigate('Quiz');
+        }
+      } else {
+        // No active session - reset to ModeSelection if we're on a completion screen
+        const currentRoute = navigationRef.current.getCurrentRoute?.()?.name;
+        if (currentRoute === 'FocusedModeComplete' || currentRoute === 'Results') {
+          navigationRef.current.reset({
+            index: 0,
+            routes: [{ name: 'ModeSelection' }],
+          });
+        }
       }
     }
   }, [currentUser?.session_status]);
