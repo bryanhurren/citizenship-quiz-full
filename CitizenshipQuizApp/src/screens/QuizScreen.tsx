@@ -611,18 +611,17 @@ export const QuizScreen = () => {
   const handleSessionComplete = async (status: 'passed' | 'failed') => {
     setSessionCompleted(true);
 
-    // Create brief completion message for focused mode
-    const completionMessage: ChatMessage = {
-      id: 'completion',
-      type: 'feedback',
-      content: `Focused practice complete! You answered ${correctCount} correctly and ${incorrectCount} incorrectly.`,
-      grade: 'correct',
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, completionMessage]);
-
-    // Check if this is a focused mode session
+    // Check if this is a focused mode session FIRST (before creating messages)
     if (studyMode === 'focused' && currentUser && currentUser !== 'guest' && selectedTestVersion) {
+      // Create brief completion message for focused mode
+      const completionMessage: ChatMessage = {
+        id: 'completion',
+        type: 'feedback',
+        content: `Focused practice complete! You answered ${correctCount} correctly and ${incorrectCount} incorrectly.`,
+        grade: 'correct',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, completionMessage]);
       // Save session to database before navigating
       const sessionData = {
         user_id: currentUser.id,

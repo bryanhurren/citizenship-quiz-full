@@ -8,6 +8,18 @@ The following packages should be updated for best compatibility with the install
   expo@54.0.16 - expected version: 54.0.20
   react-native@0.81.4 - expected version: 0.81.5
 Your project may not work correctly until you install the expected versions of the packages.
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+| Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
 › Opening exp://192.168.6.109:8081 on iPhone 16 Pro Max
 TypeError: Invalid Version: 54.0.6
 
